@@ -4,7 +4,7 @@ import InventoryIcon from '@mui/icons-material/Inventory2';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
 import TimerIcon from '@mui/icons-material/Timer';
 import { useStoredState } from './storage';
-import { INITIAL_PROJECTS, INITIAL_YARNS, NAV_MAX_WIDTH, NAV_PILL_RADIUS, NAV_SIDE_INSET, STORAGE_KEY_PROJECTS, STORAGE_KEY_YARNS, navClearance, navDockBottom, sanitizeProjects, sanitizeYarns, type Project, type Yarn } from './shared';
+import { INITIAL_PROJECTS, INITIAL_YARNS, NAV_PILL_RADIUS, NAV_SIDE_INSET, STORAGE_KEY_PROJECTS, STORAGE_KEY_YARNS, navClearance, navDockBottom, sanitizeProjects, sanitizeYarns, type Project, type Yarn } from './shared';
 import { InventoryPage } from './pages/InventoryPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
@@ -29,8 +29,8 @@ export default function App() {
       </Routes>
 
       <Paper component="nav" elevation={3}
-        sx={{ position: 'fixed', zIndex: 1000, overflow: 'hidden', mx: 'auto',
-          borderRadius: `${NAV_PILL_RADIUS}px`, maxWidth: NAV_MAX_WIDTH,
+        sx={{ position: 'fixed', zIndex: 1000, overflow: 'hidden',
+          borderRadius: `${NAV_PILL_RADIUS}px`,
           left: `max(${NAV_SIDE_INSET}px, env(safe-area-inset-left, 0px))`,
           right: `max(${NAV_SIDE_INSET}px, env(safe-area-inset-right, 0px))`,
           bottom: navDockBottom, bgcolor: 'var(--md-surface-container)' }}>

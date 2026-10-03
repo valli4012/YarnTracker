@@ -65,7 +65,7 @@ export const buildTheme = (mode: 'light' | 'dark') => {
       // Островок 88px. Индикатор 56×32, радиус 16 — половина его высоты.
       MuiBottomNavigation: { styleOverrides: { root: { height: 88, backgroundColor: 'transparent' } } },
       MuiBottomNavigationAction: { styleOverrides: {
-        root: { minWidth: 48, maxWidth: 'none', paddingTop: 22, paddingBottom: 18, position: 'relative', color: c.onSurfaceVariant,
+        root: { minWidth: 64, maxWidth: 'none', paddingTop: 22, paddingBottom: 18, position: 'relative', color: c.onSurfaceVariant,
           '&::before': { content: '""', position: 'absolute', top: 18, left: '50%', width: 56, height: 32, marginLeft: -28,
             borderRadius: 16, backgroundColor: c.secondaryContainer, transform: 'scaleX(0)', transition: 'transform .2s ease' },
           '& .MuiSvgIcon-root': { position: 'relative', zIndex: 1 },
