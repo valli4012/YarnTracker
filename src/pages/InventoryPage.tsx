@@ -16,6 +16,7 @@ import {
 import { useFeedback } from '../feedback';
 import { compressImage } from '../image';
 import { EmptyState } from '../components/EmptyState';
+import { NumberField } from '../components/NumberField';
 import { PageHeader } from '../components/PageHeader';
 import { YarnCard } from '../components/YarnCard';
 import { YarnDetail } from '../components/YarnDetail';
@@ -292,9 +293,9 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[]; se
 
           <FormSection title="Моток">
             <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr 1fr' }}>
-              <TextField fullWidth label="Вес, г *" type="number" value={weightStr} onChange={(e) => setWeightStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'decimal' } }} />
-              <TextField fullWidth label="Метраж, м *" type="number" value={lengthStr} onChange={(e) => setLengthStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'decimal' } }} />
-              <TextField fullWidth label="Шт. *" type="number" value={stockStr} onChange={(e) => setStockStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }} />
+              <NumberField fullWidth label="Вес, г *" placeholder="50" decimal value={weightStr} onChange={setWeightStr} />
+              <NumberField fullWidth label="Метраж, м *" placeholder="175" decimal value={lengthStr} onChange={setLengthStr} />
+              <NumberField fullWidth label="Шт. *" placeholder="1" value={stockStr} onChange={setStockStr} />
             </Box>
           </FormSection>
 
@@ -311,8 +312,8 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[]; se
               {tempMaterials.map((mat, index) => (
                 <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                   <TextField size="small" placeholder="Материал" value={mat.name} onChange={(e) => updateMaterialRow(index, 'name', e.target.value)} sx={{ flex: 1 }} />
-                  <TextField size="small" type="number" placeholder="%" value={mat.percentageStr} onChange={(e) => updateMaterialRow(index, 'percentageStr', e.target.value)}
-                    sx={{ width: 84 }} slotProps={{ htmlInput: { min: 0, max: 100, inputMode: 'numeric' } }} />
+                  <NumberField size="small" placeholder="%" value={mat.percentageStr} onChange={(v) => updateMaterialRow(index, 'percentageStr', v)}
+                    sx={{ width: 84 }} />
                   <IconButton size="small" color="error" aria-label="Убрать компонент" onClick={() => removeMaterialRow(index)} disabled={tempMaterials.length === 1}>
                     <DeleteIcon fontSize="small" />
                   </IconButton>
