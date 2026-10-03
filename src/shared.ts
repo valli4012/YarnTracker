@@ -1,6 +1,13 @@
 // FAB над нижней навигацией (80dp) с учётом выреза/жеста iPhone
 export const fabSx = { position: 'fixed' as const, right: 16, bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))', zIndex: 1100 };
 
+// Tonal button M3: вторичная кнопка на экране счётчика
+export const tonalSx = {
+  bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)',
+  '&:hover': { bgcolor: 'var(--md-secondary-container)', filter: 'brightness(.96)' },
+  '&.Mui-disabled': { opacity: 0.38 },
+};
+
 // --- ТИПЫ ДАННЫХ ---
 // Вспомогательный тип для компонента состава
 export interface MaterialComponent {
@@ -40,6 +47,7 @@ export interface Project {
 export const STORAGE_KEY_YARNS = 'yarn_tracker_inventory_v2';
 export const STORAGE_KEY_PROJECTS = 'yarn_tracker_projects_v2';
 export const STORAGE_KEY_STANDALONE_COUNTER = 'yarn_tracker_standalone_counter'; // Новый ключ
+export const STORAGE_KEY_VOICE_SPEAK = 'yarn_tracker_voice_speak'; // Озвучивать итог после голосовой команды
 
 // Начальные данные
 export const INITIAL_YARNS: Yarn[] = [
