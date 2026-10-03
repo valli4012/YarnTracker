@@ -10,6 +10,7 @@ import TimerIcon from '@mui/icons-material/Timer';
 import { fabSx, getAvailableStock, modalStyle, STATUS_LABEL, type Project, type ProjectMaterial, type Yarn } from '../shared';
 import { useFeedback } from '../feedback';
 import { EmptyState } from '../components/EmptyState';
+import { NumberField } from '../components/NumberField';
 import { PageHeader } from '../components/PageHeader';
 import { YarnThumb } from '../components/YarnThumb';
 
@@ -28,17 +29,20 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState<Project['status']>('planned');
   const [selectedYarnId, setSelectedYarnId] = useState<number | ''>('');
-  const [materialQty, setMaterialQty] = useState<number>(1);
+  const [materialQtyStr, setMaterialQtyStr] = useState('1');
   const [tempMaterials, setTempMaterials] = useState<ProjectMaterial[]>([]);
 
+  const materialQty = Math.floor(Number(materialQtyStr));
+  const canAddMaterial = Boolean(selectedYarnId) && Number.isFinite(materialQty) && materialQty > 0;
+
   const handleOpen = () => {
-    setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQty(1); setTempMaterials([]); setTargetRowsStr('');
+    setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQtyStr('1'); setTempMaterials([]); setTargetRowsStr('');
     setOpen(true);
   };
   const handleClose = () => setOpen(false);
 
   const addMaterialToList = () => {
-    if (!selectedYarnId || materialQty <= 0) return;
+    if (!selectedYarnId || !canAddMaterial) return;
     const existsIndex = tempMaterials.findIndex(m => m.yarnId === selectedYarnId);
     if (existsIndex >= 0) {
       setTempMaterials(tempMaterials.map((m, i) => (i === existsIndex ? { ...m, quantity: m.quantity + materialQty } : m)));
@@ -46,7 +50,7 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
       setTempMaterials([...tempMaterials, { yarnId: Number(selectedYarnId), quantity: materialQty }]);
     }
     setSelectedYarnId('');
-    setMaterialQty(1);
+    setMaterialQtyStr('1');
   };
 
   const removeMaterialFromList = (index: number) => setTempMaterials(tempMaterials.filter((_, i) => i !== index));
@@ -176,8 +180,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
                 <MenuItem value="finished">Готово</MenuItem>
               </Select>
             </FormControl>
-            <TextField fullWidth margin="dense" type="number" label="Всего рядов" value={targetRowsStr} onChange={(e) => setTargetRowsStr(e.target.value)}
-              slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }} />
+            <NumberField fullWidth margin="dense" label="Всего рядов" placeholder="необязательно"
+              value={targetRowsStr} onChange={setTargetRowsStr} />
           </Box>
 
           <Divider sx={{ my: 2 }} />
@@ -195,9 +199,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
           </FormControl>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
-            <TextField type="number" label="Кол-во" value={materialQty} onChange={(e) => setMaterialQty(Number(e.target.value))}
-              sx={{ width: 110 }} slotProps={{ htmlInput: { min: 1, inputMode: 'numeric' } }} />
-            <Button variant="outlined" onClick={addMaterialToList} disabled={!selectedYarnId}>Добавить</Button>
+            <NumberField label="Кол-во" placeholder="1" value={materialQtyStr} onChange={setMaterialQtyStr} sx={{ width: 110 }} />
+            <Button variant="outlined" onClick={addMaterialToList} disabled={!canAddMaterial}>Добавить</Button>
           </Box>
 
           {tempMaterials.length > 0 && (
