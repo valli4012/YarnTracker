@@ -10,13 +10,30 @@ const Spec = ({ icon, children }: { icon: React.ReactNode; children: React.React
   </Box>
 );
 
+// Размер в карточке уже подписан «мм» в форме. Если человек вписал единицы сам — не дублируем.
+const toolText = (kind: string, value: string) => {
+  const v = value.trim();
+  return /мм|mm/i.test(v) ? `${kind} ${v}` : `${kind} ${v} мм`;
+};
+
+const ToolChip = ({ children }: { children: React.ReactNode }) => (
+  <Box component="span" sx={{
+    display: 'inline-block', maxWidth: '100%', px: 0.75, py: 0.125, borderRadius: '6px',
+    border: '1px solid var(--md-outline-variant)', typography: 'caption', color: 'text.secondary',
+    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+  }}>{children}</Box>
+);
+
 interface Props { yarn: Yarn; available: number; onOpen: () => void }
 
 // Карточка в списке: фото слева, справа всё главное. Нажатие открывает полную карточку (без редактирования).
 export function YarnCard({ yarn, available, onOpen }: Props) {
   const tone = getStockTone(available);
   const composition = yarn.materials.filter(m => m.name).map(m => `${m.name} ${m.percentage}%`).join(' · ');
-  const tools = [yarn.needleSize && `спицы ${yarn.needleSize}`, yarn.hookSize && `крючок ${yarn.hookSize}`].filter(Boolean).join(' · ');
+  const tools = [
+    yarn.needleSize.trim() && toolText('спицы', yarn.needleSize),
+    yarn.hookSize.trim() && toolText('крючок', yarn.hookSize),
+  ].filter(Boolean);
   const stockText = tone === 'empty' && yarn.stock > 0 ? 'Всё в проектах' : tone === 'empty' ? 'Закончилась' : `Доступно ${available} из ${yarn.stock} шт.`;
 
   return (
@@ -42,10 +59,17 @@ export function YarnCard({ yarn, available, onOpen }: Props) {
             </Box>
           </Box>
 
-          {(composition || tools) && (
+          {/* Размер спиц и крючка не мешаем в строку состава: там он терялся. Отдельные плашки, только если размер указан. */}
+          {tools.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {tools.map(label => <ToolChip key={label}>{label}</ToolChip>)}
+            </Box>
+          )}
+
+          {composition && (
             <Typography variant="caption" color="text.secondary"
               sx={{ mt: 'auto', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {[composition, tools].filter(Boolean).join(' · ')}
+              {composition}
             </Typography>
           )}
         </Box>

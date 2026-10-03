@@ -6,10 +6,13 @@ import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { fabSx, getAvailableStock, getProjectProgress, modalStyle, type Project, type ProjectMaterial, type ProjectStage, type Yarn } from '../shared';
+import { DEFAULT_PROJECT_ACCENT, DEFAULT_PROJECT_ICON, type ProjectAccent, type ProjectIcon } from '../projectAppearance';
 import { useFeedback } from '../feedback';
 import { EmptyState } from '../components/EmptyState';
 import { NumberField } from '../components/NumberField';
 import { PageHeader } from '../components/PageHeader';
+import { ProjectLookPicker } from '../components/ProjectLookPicker';
+import { ProjectMark } from '../components/ProjectMark';
 import { StagesSection } from '../components/StagesSection';
 
 export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Project[]; setProjects: any; yarns: Yarn[] }) => {
@@ -19,6 +22,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
   const [targetRowsStr, setTargetRowsStr] = useState('');
 
   const [title, setTitle] = useState('');
+  const [icon, setIcon] = useState<ProjectIcon>(DEFAULT_PROJECT_ICON);
+  const [accent, setAccent] = useState<ProjectAccent>(DEFAULT_PROJECT_ACCENT);
   const [status, setStatus] = useState<Project['status']>('planned');
   const [selectedYarnId, setSelectedYarnId] = useState<number | ''>('');
   const [materialQtyStr, setMaterialQtyStr] = useState('1');
@@ -29,7 +34,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
   const canAddMaterial = Boolean(selectedYarnId) && Number.isFinite(materialQty) && materialQty > 0;
 
   const handleOpen = () => {
-    setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQtyStr('1'); setTempMaterials([]); setTargetRowsStr(''); setDraftStages([]);
+    setTitle(''); setIcon(DEFAULT_PROJECT_ICON); setAccent(DEFAULT_PROJECT_ACCENT);
+    setStatus('planned'); setSelectedYarnId(''); setMaterialQtyStr('1'); setTempMaterials([]); setTargetRowsStr(''); setDraftStages([]);
     setOpen(true);
   };
   const handleClose = () => setOpen(false);
@@ -69,6 +75,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
       id: Date.now(),
       title: title.trim(),
       status,
+      icon,
+      accent,
       materials: tempMaterials,
       createdAt: Date.now(),
       currentRows: 0,
@@ -103,11 +111,13 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
             const progress = getProjectProgress(proj);
             return (
               <Card key={proj.id} sx={{ opacity: proj.status === 'finished' ? 0.85 : 1 }}>
-                {/* На плитке только название и прогресс — подробности на экране изделия */}
-                <CardActionArea onClick={() => navigate(`/projects/${proj.id}`)} sx={{ p: 2, display: 'block' }}>
-                  <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>{proj.title}</Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{progress.label}</Typography>
-                  <LinearProgress variant="determinate" value={progress.value} sx={{ mt: 1 }} />
+                <CardActionArea onClick={() => navigate(`/projects/${proj.id}`)} sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <ProjectMark icon={proj.icon} accent={proj.accent} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>{proj.title}</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{progress.label}</Typography>
+                    <LinearProgress variant="determinate" value={progress.value} sx={{ mt: 1 }} />
+                  </Box>
                 </CardActionArea>
               </Card>
             );
@@ -125,6 +135,9 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
           </Box>
 
           <TextField fullWidth margin="dense" label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Box sx={{ mt: 1.5, mb: 1 }}>
+            <ProjectLookPicker icon={icon} accent={accent} onIcon={setIcon} onAccent={setAccent} />
+          </Box>
 
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
             <FormControl fullWidth margin="dense">
