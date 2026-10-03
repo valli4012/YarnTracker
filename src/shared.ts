@@ -139,3 +139,30 @@ export const sanitizeProjects = (raw: unknown): Project[] => {
     targetRows: p.targetRows == null ? undefined : num(p.targetRows),
   }));
 };
+
+// --- ВСПОМОГАТЕЛЬНОЕ ДЛЯ КАРТОЧЕК ---
+export const plural = (n: number, forms: [string, string, string]) => {
+  const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? forms[2] : b > 1 && b < 5 ? forms[1] : b === 1 ? forms[0] : forms[2];
+};
+
+// Сколько мотков зарезервировано в изделиях (запланированных и в работе)
+export const getReservedStock = (yarnId: number, projects: Project[]): number =>
+  projects
+    .filter(p => p.status !== 'finished')
+    .reduce((sum, p) => sum + p.materials.filter(m => m.yarnId === yarnId).reduce((s, m) => s + m.quantity, 0), 0);
+
+// Изделия, где используется эта пряжа
+export const getProjectsUsingYarn = (yarnId: number, projects: Project[]) =>
+  projects
+    .map(p => ({ project: p, quantity: p.materials.filter(m => m.yarnId === yarnId).reduce((s, m) => s + m.quantity, 0) }))
+    .filter(x => x.quantity > 0);
+
+export type StockTone = 'ok' | 'low' | 'empty';
+export const getStockTone = (available: number): StockTone => (available <= 0 ? 'empty' : available <= 2 ? 'low' : 'ok');
+
+export const STOCK_TONE_STYLE: Record<StockTone, { bgcolor: string; color: string }> = {
+  ok: { bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' },
+  low: { bgcolor: 'var(--md-tertiary-container)', color: 'var(--md-on-tertiary-container)' },
+  empty: { bgcolor: 'var(--md-error-container)', color: 'var(--md-on-error-container)' },
+};

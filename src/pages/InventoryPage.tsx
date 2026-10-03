@@ -1,41 +1,63 @@
 import { useState } from 'react';
-import { Box, Typography, Container, Chip, Stack, Button, Modal, TextField, IconButton, Fab, MenuItem, Select, InputLabel, FormControl, Card, CardContent, Divider, Badge } from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Badge, Box, Button, Chip, Container, Fab, FormControl, IconButton, InputLabel, MenuItem, Modal, Select, TextField, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import { fabSx, getAvailableStock, modalStyle, type MaterialComponent, type Yarn, type Project } from '../shared';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import SearchIcon from '@mui/icons-material/Search';
+import SearchOffIcon from '@mui/icons-material/SearchOff';
+import {
+  fabSx, getAvailableStock, getProjectsUsingYarn, modalStyle, plural,
+  type MaterialComponent, type Project, type Yarn,
+} from '../shared';
 import { useFeedback } from '../feedback';
+import { compressImage } from '../image';
+import { EmptyState } from '../components/EmptyState';
+import { PageHeader } from '../components/PageHeader';
+import { YarnCard } from '../components/YarnCard';
+import { YarnDetail } from '../components/YarnDetail';
 
-export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[], setYarns: any, projects: Project[] }) => {
+interface TempMaterial { name: string; percentageStr: string }
+
+const FormSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <Box sx={{ mt: 3 }}>
+    <Typography variant="overline" color="text.secondary" sx={{ display: 'block', mb: 1.75 }}>{title}</Typography>
+    {children}
+  </Box>
+);
+
+export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[]; setYarns: any; projects: Project[] }) => {
   const { confirm, toast } = useFeedback();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Открытая карточка хранится в истории браузера: системная кнопка «Назад» на телефоне закрывает её
+  const detailId = (location.state as { yarnId?: number } | null)?.yarnId;
+  const detailYarn = detailId != null ? yarns.find(y => y.id === detailId) : undefined;
+  const openDetail = (id: number) => navigate(location.pathname, { state: { yarnId: id } });
+  const closeDetail = () => navigate(-1);
+
   const [openForm, setOpenForm] = useState(false);
   const [openFilters, setOpenFilters] = useState(false);
-  
+
   // Состояния формы
   const [editingId, setEditingId] = useState<number | null>(null);
   const [brand, setBrand] = useState('');
   const [colorName, setColorName] = useState('');
   const [colorCode, setColorCode] = useState('');
-  const [weightStr, setWeightStr] = useState(''); 
+  const [weightStr, setWeightStr] = useState('');
   const [lengthStr, setLengthStr] = useState('');
   const [stockStr, setStockStr] = useState('1');
   const [needleSize, setNeedleSize] = useState('');
   const [hookSize, setHookSize] = useState('');
   const [gaugeSample, setGaugeSample] = useState('');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoData, setPhotoData] = useState<string | undefined>(undefined);
-  
-  // МАТЕРИАЛЫ ТЕПЕРЬ ХРАНЯТ ПРОЦЕНТЫ КАК СТРОКИ ДЛЯ СВОБОДНОГО РЕДАКТИРОВАНИЯ
-  interface TempMaterial {
-    name: string;
-    percentageStr: string; // Строка!
-  }
   const [tempMaterials, setTempMaterials] = useState<TempMaterial[]>([{ name: '', percentageStr: '100' }]);
 
-  // Состояния фильтров
+  // Фильтры
   const [filterBrand, setFilterBrand] = useState('');
   const [filterColorCode, setFilterColorCode] = useState('');
   const [filterMaterialName, setFilterMaterialName] = useState('');
@@ -43,34 +65,25 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[], se
   const [filterHook, setFilterHook] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // --- ЛОГИКА МАТЕРИАЛОВ (STRICT STRING HANDLING) ---
-  const addMaterialRow = () => {
-    setTempMaterials([...tempMaterials, { name: '', percentageStr: '' }]);
-  };
-
+  // --- Состав ---
+  const addMaterialRow = () => setTempMaterials([...tempMaterials, { name: '', percentageStr: '' }]);
   const removeMaterialRow = (index: number) => {
     if (tempMaterials.length === 1) return;
     setTempMaterials(tempMaterials.filter((_, i) => i !== index));
   };
+  const updateMaterialRow = (index: number, field: keyof TempMaterial, value: string) =>
+    setTempMaterials(tempMaterials.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
 
-  const updateMaterialRow = (index: number, field: 'name' | 'percentageStr', value: string) => {
-    const newMats = [...tempMaterials];
-    newMats[index][field] = value;
-    setTempMaterials(newMats);
-  };
-
-  // Обработка фото
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // --- Фото: уменьшаем до 900px, чтобы не упереться в лимит хранилища ---
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    if (file.size > 500 * 1024) { toast('Файл слишком большой — максимум 500 КБ'); return; }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      setPhotoData(result);
-      setPhotoPreview(result);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setPhotoData(await compressImage(file));
+    } catch {
+      toast('Не удалось загрузить фото');
+    }
   };
 
   const resetForm = () => {
@@ -78,14 +91,11 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[], se
     setBrand(''); setColorName(''); setColorCode('');
     setWeightStr(''); setLengthStr(''); setStockStr('1');
     setNeedleSize(''); setHookSize(''); setGaugeSample('');
-    setPhotoData(undefined); setPhotoPreview(null);
+    setPhotoData(undefined);
     setTempMaterials([{ name: '', percentageStr: '100' }]);
   };
 
-  const handleOpenCreate = () => {
-    resetForm();
-    setOpenForm(true);
-  };
+  const handleOpenCreate = () => { resetForm(); setOpenForm(true); };
 
   const handleEdit = (yarn: Yarn) => {
     setEditingId(yarn.id);
@@ -99,281 +109,230 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[], se
     setHookSize(yarn.hookSize);
     setGaugeSample(yarn.gaugeSample);
     setPhotoData(yarn.photoData);
-    setPhotoPreview(yarn.photoData || null);
-    
-    // Конвертируем числа обратно в строки для формы
     const mats = yarn.materials.map(m => ({ name: m.name, percentageStr: String(m.percentage) }));
     setTempMaterials(mats.length > 0 ? mats : [{ name: '', percentageStr: '100' }]);
     setOpenForm(true);
   };
 
-  const handleCloseForm = () => {
-    setOpenForm(false);
-    resetForm();
-  };
+  const handleCloseForm = () => { setOpenForm(false); resetForm(); };
 
   const handleSubmitForm = async () => {
-    if (!brand || !colorName) {
-      toast('Заполните бренд и цвет');
-      return;
-    }
-    
+    if (!brand.trim() || !colorName.trim()) { toast('Заполните бренд и цвет'); return; }
+
     const w = Number(weightStr);
     const l = Number(lengthStr);
     const s = Number(stockStr);
-
-    if (isNaN(w) || isNaN(l) || isNaN(s)) {
-       toast('Вес, метраж и количество — числа');
-       return;
+    if (weightStr === '' || lengthStr === '' || stockStr === '' || [w, l, s].some(isNaN)) {
+      toast('Укажите вес, метраж и количество'); return;
     }
+    if (w <= 0 || l <= 0 || s < 0) { toast('Вес и метраж должны быть больше нуля'); return; }
 
-    // Парсим материалы из строк в числа, очищая пустые
     const parsedMaterials: MaterialComponent[] = tempMaterials
       .filter(m => m.name.trim() !== '')
-      .map(m => ({
-        name: m.name.trim(),
-        percentage: Math.min(Math.max(parseInt(m.percentageStr) || 0, 0), 100)
-      }));
+      .map(m => ({ name: m.name.trim(), percentage: Math.min(Math.max(parseInt(m.percentageStr) || 0, 0), 100) }));
 
     const totalPercent = parsedMaterials.reduce((acc, m) => acc + m.percentage, 0);
     if (parsedMaterials.length > 0 && totalPercent !== 100) {
-       if (!(await confirm({ title: 'Сумма состава не 100%', text: `Сейчас ${totalPercent}%. Сохранить как есть?`, ok: 'Сохранить' }))) return;
+      if (!(await confirm({ title: 'Сумма состава не 100%', text: `Сейчас ${totalPercent}%. Сохранить как есть?`, ok: 'Сохранить' }))) return;
     }
 
-    const newYarnData: Partial<Yarn> = {
-      brand, colorName, colorCode,
-      weight: w, length: l, stock: s,
-      needleSize, hookSize, gaugeSample,
-      materials: parsedMaterials,
-      photoData: photoData
+    const data = {
+      brand: brand.trim(), colorName: colorName.trim(), colorCode: colorCode.trim(),
+      weight: w, length: l, stock: Math.floor(s),
+      needleSize: needleSize.trim(), hookSize: hookSize.trim(), gaugeSample,
+      materials: parsedMaterials, photoData,
     };
 
     if (editingId !== null) {
-      setYarns(yarns.map(y => y.id === editingId ? { ...y, ...newYarnData } : y));
+      setYarns(yarns.map(y => (y.id === editingId ? { ...y, ...data } : y)));
+      toast('Изменения сохранены');
     } else {
-      const newItem: Yarn = {
-        id: Date.now(),
-        ...newYarnData as Omit<Yarn, 'id'>
-      };
-      setYarns([newItem, ...yarns]);
+      setYarns([{ id: Date.now(), ...data }, ...yarns]);
+      toast('Моток добавлен');
     }
-    
     handleCloseForm();
   };
 
-  const handleDelete = async (id: number) => {
-    if (await confirm({ title: 'Удалить моток?', ok: 'Удалить', danger: true })) {
-      setYarns(yarns.filter(y => y.id !== id));
-      toast('Моток удалён');
-    }
+  const handleDelete = async (yarn: Yarn) => {
+    const used = getProjectsUsingYarn(yarn.id, projects).filter(x => x.project.status !== 'finished');
+    const text = used.length ? `Эта пряжа указана в изделиях: ${used.map(x => x.project.title).join(', ')}.` : undefined;
+    if (!(await confirm({ title: 'Удалить моток?', text, ok: 'Удалить', danger: true }))) return;
+    if (detailId === yarn.id) closeDetail();
+    setYarns(yarns.filter(y => y.id !== yarn.id));
+    toast('Моток удалён');
   };
 
-  // --- ФИЛЬТРАЦИЯ ---
-  const filteredYarns = yarns.filter(yarn => {
-    const searchLower = searchQuery.toLowerCase().trim();
-    const matchesSearch = 
-      searchLower === '' || 
-      yarn.brand.toLowerCase().includes(searchLower) || 
-      yarn.colorName.toLowerCase().includes(searchLower);
-
-    const matchesBrand = filterBrand === '' || yarn.brand === filterBrand;
-    const matchesColorCode = filterColorCode === '' || yarn.colorCode.includes(filterColorCode);
-    const matchesNeedle = filterNeedle === '' || yarn.needleSize.includes(filterNeedle);
-    const matchesHook = filterHook === '' || yarn.hookSize.includes(filterHook);
-    const matchesMaterial = filterMaterialName === '' || 
-      yarn.materials.some(m => m.name.toLowerCase().includes(filterMaterialName.toLowerCase()));
-
-    return matchesSearch && matchesBrand && matchesColorCode && matchesNeedle && matchesHook && matchesMaterial;
-  });
+  // --- Фильтрация ---
+  const q = searchQuery.toLowerCase().trim();
+  const filteredYarns = yarns.filter(yarn =>
+    (q === '' || yarn.brand.toLowerCase().includes(q) || yarn.colorName.toLowerCase().includes(q) || yarn.colorCode.toLowerCase().includes(q)) &&
+    (filterBrand === '' || yarn.brand === filterBrand) &&
+    (filterColorCode === '' || yarn.colorCode.includes(filterColorCode)) &&
+    (filterNeedle === '' || yarn.needleSize.includes(filterNeedle)) &&
+    (filterHook === '' || yarn.hookSize.includes(filterHook)) &&
+    (filterMaterialName === '' || yarn.materials.some(m => m.name.toLowerCase().includes(filterMaterialName.toLowerCase()))),
+  );
 
   const uniqueBrands = Array.from(new Set(yarns.map(y => y.brand))).sort();
   const allMaterialNames = Array.from(new Set(yarns.flatMap(y => y.materials.map(m => m.name)).filter(Boolean))).sort();
 
-  const activeFilters = [filterBrand, filterColorCode, filterMaterialName, filterNeedle, filterHook].filter(Boolean).length;
+  const activeFilters = [
+    filterBrand && { label: filterBrand, clear: () => setFilterBrand('') },
+    filterMaterialName && { label: filterMaterialName, clear: () => setFilterMaterialName('') },
+    filterColorCode && { label: `№${filterColorCode}`, clear: () => setFilterColorCode('') },
+    filterNeedle && { label: `спицы ${filterNeedle}`, clear: () => setFilterNeedle('') },
+    filterHook && { label: `крючок ${filterHook}`, clear: () => setFilterHook('') },
+  ].filter(Boolean) as { label: string; clear: () => void }[];
+
+  const resetFilters = () => {
+    setFilterBrand(''); setFilterColorCode(''); setFilterMaterialName(''); setFilterNeedle(''); setFilterHook(''); setSearchQuery('');
+  };
+
+  const totalSkeins = yarns.reduce((s, y) => s + y.stock, 0);
+  const subtitle = yarns.length === 0
+    ? 'Пока ничего нет'
+    : `${yarns.length} ${plural(yarns.length, ['позиция', 'позиции', 'позиций'])} · ${totalSkeins} ${plural(totalSkeins, ['моток', 'мотка', 'мотков'])}`;
 
   return (
-    <Container sx={{ mt: 2, pb: 10 }}> {/* pb: 10 чтобы контент не прятался под меню */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h5" component="h1">Склад</Typography>
-        <Fab color="primary" aria-label="Добавить моток" onClick={handleOpenCreate} sx={fabSx}>
-            <AddIcon />
-          </Fab>
-      </Stack>
-      
-      <TextField 
-        fullWidth 
-        placeholder="Поиск..." 
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        slotProps={{ input: { startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />, endAdornment: (
-          <IconButton aria-label="Фильтры" edge="end" onClick={() => setOpenFilters(true)}>
-            <Badge color="primary" variant="dot" invisible={!activeFilters}><FilterListIcon /></Badge>
-          </IconButton>) } }}
-        sx={{ mb: 3, '& .MuiOutlinedInput-root': { borderRadius: 7, bgcolor: 'var(--md-surface-container-high)', '& fieldset': { border: 'none' } } }}
-      />
+    <Container sx={{ pb: 12 }}>
+      <PageHeader title="Склад" subtitle={subtitle} />
 
-      {filteredYarns.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-          <Typography variant="h6">Ничего не найдено</Typography>
-        </Box>
-      ) : (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' } }}>
-          {filteredYarns.map((yarn) => {
-            const available = getAvailableStock(yarn.id, yarns, projects);
-            const isLowStock = available <= 2;
+      {yarns.length > 0 && (
+        <>
+          <TextField
+            fullWidth
+            placeholder="Поиск по бренду, цвету, номеру"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            slotProps={{ input: {
+              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
+              endAdornment: (
+                <IconButton aria-label="Фильтры" edge="end" onClick={() => setOpenFilters(true)}>
+                  <Badge color="primary" variant="dot" invisible={activeFilters.length === 0}><FilterListIcon /></Badge>
+                </IconButton>
+              ),
+            } }}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 7, bgcolor: 'var(--md-surface-container-high)', '& fieldset': { border: 'none' } } }}
+          />
 
-            return (
-              <Box key={yarn.id}>
-                <Card>
-                  
-                  {/* Фото区 */}
-                  <Box 
-                    component={yarn.photoData ? 'img' : 'div'}
-                    src={yarn.photoData}
-                    alt={yarn.colorName}
-                    sx={{ 
-                      width: '100%', 
-                      aspectRatio: '1 / 1', // Квадратное фото
-                      objectFit: 'cover', 
-                      bgcolor: 'var(--md-surface-container-high)',
-                      borderBottom: '1px solid var(--md-outline-variant)'
-                    }}
-                  >
-                    {!yarn.photoData && (
-                       <Box sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
-                         <Typography variant="body2">Нет фото</Typography>
-                       </Box>
-                    )}
-                  </Box>
-
-                  {/* Контент */}
-                  <CardContent sx={{ flexGrow: 1, p: 2.5 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="start" mb={1}>
-                      <Box>
-                        <Typography variant="subtitle1" fontWeight={700} noWrap>{yarn.brand}</Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          {yarn.colorName} {yarn.colorCode && `• #${yarn.colorCode}`}
-                        </Typography>
-                      </Box>
-                      <Chip 
-                        label={`${available}/${yarn.stock}`} 
-                        size="small" 
-                        color={isLowStock ? "warning" : "success"} 
-                        variant="filled"
-                        sx={{ fontWeight: 700, ml: 1 }}
-                      />
-                    </Stack>
-
-                    <Divider sx={{ my: 1.5, borderColor: 'var(--md-outline-variant)' }} />
-
-                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={0.5} mb={1}>
-                      {yarn.needleSize && <Chip icon={<span>🪡</span>} label={`Спицы: ${yarn.needleSize}`} size="small" variant="outlined" sx={{ borderColor: 'var(--md-outline-variant)' }} />}
-                      {yarn.hookSize && <Chip icon={<span>🧶</span>} label={`Крючок: ${yarn.hookSize}`} size="small" variant="outlined" sx={{ borderColor: 'var(--md-outline-variant)' }} />}
-                    </Stack>
-
-                    {yarn.materials && yarn.materials.length > 0 && (
-                      <Box mt={1}>
-                        <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Состав:</Typography>
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
-                          {yarn.materials.map((mat, idx) => (
-                            <Chip key={idx} label={`${mat.name} ${mat.percentage}%`} size="small" sx={{ bgcolor: 'var(--md-surface-container-high)', fontSize: '0.7rem', height: 22 }} />
-                          ))}
-                        </Stack>
-                      </Box>
-                    )}
-                  </CardContent>
-
-                  {/* Футер с действиями */}
-                  <Box sx={{ borderTop: '1px solid var(--md-outline-variant)', px: 2, py: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                     <IconButton size="small" onClick={() => handleEdit(yarn)}>
-                       <EditIcon fontSize="small" color="action"/>
-                     </IconButton>
-                     <IconButton size="small" onClick={() => handleDelete(yarn.id)}>
-                       <DeleteIcon fontSize="small" color="error"/>
-                     </IconButton>
-                  </Box>
-                </Card>
-              </Box>
-            );
-          })}
-        </Box>
+          {activeFilters.length > 0 && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1.5 }}>
+              {activeFilters.map(f => (
+                <Chip key={f.label} label={f.label} onDelete={f.clear} sx={{ bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' }} />
+              ))}
+            </Box>
+          )}
+        </>
       )}
 
-      {/* МОДАЛКА РЕДАКТИРОВАНИЯ */}
+      <Box sx={{ mt: 2 }}>
+        {yarns.length === 0 ? (
+          <EmptyState icon={<Inventory2OutlinedIcon />} title="Склад пока пуст"
+            text="Добавьте первый моток, и он появится здесь вместе с фото, составом и остатком."
+            action={<Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>Добавить моток</Button>} />
+        ) : filteredYarns.length === 0 ? (
+          <EmptyState icon={<SearchOffIcon />} title="Ничего не найдено" text="Попробуйте изменить запрос или сбросить фильтры."
+            action={<Button variant="outlined" onClick={resetFilters}>Сбросить</Button>} />
+        ) : (
+          <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+            {filteredYarns.map(yarn => (
+              <YarnCard key={yarn.id} yarn={yarn} available={getAvailableStock(yarn.id, yarns, projects)} onOpen={() => openDetail(yarn.id)} />
+            ))}
+          </Box>
+        )}
+      </Box>
+
+      {yarns.length > 0 && (
+        <Fab color="primary" aria-label="Добавить моток" onClick={handleOpenCreate} sx={fabSx}><AddIcon /></Fab>
+      )}
+
+      {/* ПОЛНАЯ КАРТОЧКА (ПРОСМОТР) */}
+      <YarnDetail
+        yarn={detailYarn}
+        available={detailYarn ? getAvailableStock(detailYarn.id, yarns, projects) : 0}
+        usedIn={detailYarn ? getProjectsUsingYarn(detailYarn.id, projects) : []}
+        onClose={closeDetail}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      {/* ФОРМА: ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ */}
       <Modal open={openForm} onClose={handleCloseForm}>
         <Box sx={modalStyle}>
-          <Stack direction="row" justifyContent="space-between" mb={2}>
-            <Typography variant="h5" fontWeight={700}>{editingId ? 'Редактировать' : 'Новый моток'}</Typography>
-            <IconButton onClick={handleCloseForm}><CloseIcon /></IconButton>
-          </Stack>
-
-          <Box sx={{ mb: 3, textAlign: 'center' }}>
-             <input accept="image/*" id="photo-upload" type="file" style={{ display: 'none' }} onChange={handlePhotoChange} />
-             <label htmlFor="photo-upload">
-               <Button variant="contained" component="span" startIcon={<AddIcon />} sx={{ mb: 1 }}>
-                 {photoPreview ? 'Изменить фото' : 'Добавить фото'}
-               </Button>
-             </label>
-             {photoPreview && (
-               <Box component="img" src={photoPreview} sx={{ maxHeight: 150, mt: 1, borderRadius: 2, boxShadow: 2 }} />
-             )}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">{editingId !== null ? 'Редактировать моток' : 'Новый моток'}</Typography>
+            <IconButton onClick={handleCloseForm} aria-label="Закрыть"><CloseIcon /></IconButton>
           </Box>
 
-          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
-            <Box><TextField fullWidth label="Бренд *" value={brand} onChange={(e) => setBrand(e.target.value)} /></Box>
-            <Box><TextField fullWidth label="Цвет *" value={colorName} onChange={(e) => setColorName(e.target.value)} /></Box>
-            <Box><TextField fullWidth label="№ Оттенка" value={colorCode} onChange={(e) => setColorCode(e.target.value)} /></Box>
-            <Box><TextField fullWidth label="Вес (гр) *" type="number" value={weightStr} onChange={(e) => setWeightStr(e.target.value)} slotProps={{ htmlInput: { min: 0 } }} /></Box>
-            <Box><TextField fullWidth label="Метраж (м) *" type="number" value={lengthStr} onChange={(e) => setLengthStr(e.target.value)} slotProps={{ htmlInput: { min: 0 } }} /></Box>
-            <Box><TextField fullWidth label="Количество *" type="number" value={stockStr} onChange={(e) => setStockStr(e.target.value)} slotProps={{ htmlInput: { min: 0 } }} /></Box>
-            <Box><TextField fullWidth label="Спицы (мм)" value={needleSize} onChange={(e) => setNeedleSize(e.target.value)} /></Box>
-            <Box><TextField fullWidth label="Крючок (мм)" value={hookSize} onChange={(e) => setHookSize(e.target.value)} /></Box>
-            <Box sx={{ gridColumn: '1 / -1' }}><TextField fullWidth label="Образец" value={gaugeSample} onChange={(e) => setGaugeSample(e.target.value)} multiline rows={2} /></Box>
-          </Box>
+          <input accept="image/*" id="photo-upload" type="file" style={{ display: 'none' }} onChange={handlePhotoChange} />
+          <label htmlFor="photo-upload" style={{ display: 'block' }}>
+            <Box sx={{ height: photoData ? 180 : 112, borderRadius: '20px', overflow: 'hidden', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 0.5,
+              bgcolor: 'var(--md-surface-container)', color: 'text.secondary',
+              border: photoData ? 'none' : '2px dashed var(--md-outline-variant)' }}>
+              {photoData
+                ? <Box component="img" src={photoData} alt="" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <><AddPhotoAlternateOutlinedIcon /><Typography variant="body2">Добавить фото</Typography></>}
+            </Box>
+          </label>
+          {photoData && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 0.5 }}>
+              <Button size="small" component="label" htmlFor="photo-upload">Заменить</Button>
+              <Button size="small" color="error" onClick={() => setPhotoData(undefined)}>Убрать</Button>
+            </Box>
+          )}
 
-          <Box mt={3} p={2} bgcolor="var(--md-surface-container-high)" borderRadius={2}>
-            <Typography variant="subtitle2" gutterBottom fontWeight={600}>Состав пряжи:</Typography>
-            {tempMaterials.map((mat, index) => (
-              <Stack key={index} direction="row" spacing={1} alignItems="center" mb={1}>
-                <TextField 
-                  size="small" 
-                  placeholder="Материал" 
-                  value={mat.name} 
-                  onChange={(e) => updateMaterialRow(index, 'name', e.target.value)}
-                  sx={{ flexGrow: 1 }}
-                />
-                <TextField 
-                  size="small" 
-                  type="number" 
-                  placeholder="%" 
-                  value={mat.percentageStr} 
-                  onChange={(e) => updateMaterialRow(index, 'percentageStr', e.target.value)}
-                  sx={{ width: 80 }}
-                  slotProps={{ htmlInput: { min: 0, max: 100 } }}
-                />
-                <IconButton size="small" color="error" onClick={() => removeMaterialRow(index)} disabled={tempMaterials.length === 1}>
-                  <DeleteIcon fontSize="small"/>
-                </IconButton>
-              </Stack>
-            ))}
-            <Button startIcon={<AddIcon />} size="small" onClick={addMaterialRow} sx={{ mt: 1 }}>
-              Добавить компонент
-            </Button>
-          </Box>
+          <FormSection title="Основное">
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
+              <TextField fullWidth label="Бренд *" value={brand} onChange={(e) => setBrand(e.target.value)} />
+              <TextField fullWidth label="Цвет *" value={colorName} onChange={(e) => setColorName(e.target.value)} />
+              <TextField fullWidth label="№ оттенка" value={colorCode} onChange={(e) => setColorCode(e.target.value)} sx={{ gridColumn: '1 / -1' }} />
+            </Box>
+          </FormSection>
 
-          <Button fullWidth variant="contained" color="primary" sx={{ mt: 3, py: 1.5, fontSize: '1rem' }} onClick={handleSubmitForm}>
-            Сохранить
-          </Button>
+          <FormSection title="Моток">
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr 1fr' }}>
+              <TextField fullWidth label="Вес, г *" type="number" value={weightStr} onChange={(e) => setWeightStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'decimal' } }} />
+              <TextField fullWidth label="Метраж, м *" type="number" value={lengthStr} onChange={(e) => setLengthStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'decimal' } }} />
+              <TextField fullWidth label="Шт. *" type="number" value={stockStr} onChange={(e) => setStockStr(e.target.value)} slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }} />
+            </Box>
+          </FormSection>
+
+          <FormSection title="Рекомендации производителя">
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
+              <TextField fullWidth label="Спицы, мм" value={needleSize} onChange={(e) => setNeedleSize(e.target.value)} />
+              <TextField fullWidth label="Крючок, мм" value={hookSize} onChange={(e) => setHookSize(e.target.value)} />
+              <TextField fullWidth label="Образец" value={gaugeSample} onChange={(e) => setGaugeSample(e.target.value)} multiline minRows={2} sx={{ gridColumn: '1 / -1' }} />
+            </Box>
+          </FormSection>
+
+          <FormSection title="Состав">
+            <Box sx={{ borderRadius: '20px', p: 2, bgcolor: 'var(--md-surface-container)' }}>
+              {tempMaterials.map((mat, index) => (
+                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <TextField size="small" placeholder="Материал" value={mat.name} onChange={(e) => updateMaterialRow(index, 'name', e.target.value)} sx={{ flex: 1 }} />
+                  <TextField size="small" type="number" placeholder="%" value={mat.percentageStr} onChange={(e) => updateMaterialRow(index, 'percentageStr', e.target.value)}
+                    sx={{ width: 84 }} slotProps={{ htmlInput: { min: 0, max: 100, inputMode: 'numeric' } }} />
+                  <IconButton size="small" color="error" aria-label="Убрать компонент" onClick={() => removeMaterialRow(index)} disabled={tempMaterials.length === 1}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              ))}
+              <Button startIcon={<AddIcon />} size="small" onClick={addMaterialRow}>Добавить компонент</Button>
+            </Box>
+          </FormSection>
+
+          <Button fullWidth variant="contained" size="large" sx={{ mt: 3, height: 52 }} onClick={handleSubmitForm}>Сохранить</Button>
         </Box>
       </Modal>
 
-      {/* МОДАЛКА ФИЛЬТРОВ */}
+      {/* ФИЛЬТРЫ */}
       <Modal open={openFilters} onClose={() => setOpenFilters(false)}>
         <Box sx={modalStyle}>
-          <Stack direction="row" justifyContent="space-between" mb={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="h6">Фильтры</Typography>
-            <IconButton onClick={() => setOpenFilters(false)}><CloseIcon /></IconButton>
-          </Stack>
+            <IconButton onClick={() => setOpenFilters(false)} aria-label="Закрыть"><CloseIcon /></IconButton>
+          </Box>
 
           <FormControl fullWidth margin="dense">
             <InputLabel>Бренд</InputLabel>
@@ -391,14 +350,18 @@ export const InventoryPage = ({ yarns, setYarns, projects }: { yarns: Yarn[], se
             </Select>
           </FormControl>
 
-          <TextField fullWidth margin="dense" label="Оттенок #" value={filterColorCode} onChange={(e) => setFilterColorCode(e.target.value)} />
-          <TextField fullWidth margin="dense" label="Спицы мм" value={filterNeedle} onChange={(e) => setFilterNeedle(e.target.value)} />
-          <TextField fullWidth margin="dense" label="Крючок мм" value={filterHook} onChange={(e) => setFilterHook(e.target.value)} />
+          <TextField fullWidth margin="dense" label="№ оттенка" value={filterColorCode} onChange={(e) => setFilterColorCode(e.target.value)} />
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
+            <TextField fullWidth margin="dense" label="Спицы, мм" value={filterNeedle} onChange={(e) => setFilterNeedle(e.target.value)} />
+            <TextField fullWidth margin="dense" label="Крючок, мм" value={filterHook} onChange={(e) => setFilterHook(e.target.value)} />
+          </Box>
 
-          <Stack direction="row" spacing={2} mt={3}>
-            <Button variant="outlined" onClick={() => { setFilterBrand(''); setFilterColorCode(''); setFilterMaterialName(''); setFilterNeedle(''); setFilterHook(''); setSearchQuery(''); }}>Сброс</Button>
-            <Button variant="contained" onClick={() => setOpenFilters(false)} sx={{ flexGrow: 1 }}>OK</Button>
-          </Stack>
+          <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+            <Button variant="outlined" onClick={resetFilters}>Сбросить</Button>
+            <Button variant="contained" onClick={() => setOpenFilters(false)} sx={{ flex: 1 }}>
+              Показать{filteredYarns.length !== yarns.length ? ` (${filteredYarns.length})` : ''}
+            </Button>
+          </Box>
         </Box>
       </Modal>
     </Container>

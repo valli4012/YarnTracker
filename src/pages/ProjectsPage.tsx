@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Container, List, ListItem, Chip, Stack, Button, Modal, TextField, IconButton, Fab, MenuItem, Select, InputLabel, FormControl, Card, CardContent, Divider, LinearProgress } from '@mui/material';
+import { Box, Button, Card, Chip, Container, Divider, Fab, FormControl, IconButton, InputLabel, LinearProgress, MenuItem, Modal, Select, TextField, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import TimerIcon from '@mui/icons-material/Timer';
-import { fabSx, getAvailableStock, modalStyle, STATUS_LABEL, type Yarn, type ProjectMaterial, type Project } from '../shared';
+import { fabSx, getAvailableStock, modalStyle, STATUS_LABEL, type Project, type ProjectMaterial, type Yarn } from '../shared';
 import { useFeedback } from '../feedback';
+import { EmptyState } from '../components/EmptyState';
+import { PageHeader } from '../components/PageHeader';
+import { YarnThumb } from '../components/YarnThumb';
 
-export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Project[], setProjects: any, yarns: Yarn[] }) => {
+const STATUS_STYLE: Record<Project['status'], { bgcolor: string; color: string }> = {
+  planned: { bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' },
+  in_progress: { bgcolor: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' },
+  finished: { bgcolor: 'var(--md-surface-container-highest)', color: 'var(--md-on-surface-variant)' },
+};
+
+export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Project[]; setProjects: any; yarns: Yarn[] }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { confirm, toast } = useFeedback();
   const [targetRowsStr, setTargetRowsStr] = useState('');
-  
+
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<'planned' | 'in_progress' | 'finished'>('planned');
+  const [status, setStatus] = useState<Project['status']>('planned');
   const [selectedYarnId, setSelectedYarnId] = useState<number | ''>('');
   const [materialQty, setMaterialQty] = useState<number>(1);
   const [tempMaterials, setTempMaterials] = useState<ProjectMaterial[]>([]);
@@ -24,207 +35,183 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
     setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQty(1); setTempMaterials([]); setTargetRowsStr('');
     setOpen(true);
   };
-  
   const handleClose = () => setOpen(false);
 
   const addMaterialToList = () => {
     if (!selectedYarnId || materialQty <= 0) return;
-    
     const existsIndex = tempMaterials.findIndex(m => m.yarnId === selectedYarnId);
-    let newTemp = [...tempMaterials];
-    
     if (existsIndex >= 0) {
-      newTemp[existsIndex].quantity += materialQty;
+      setTempMaterials(tempMaterials.map((m, i) => (i === existsIndex ? { ...m, quantity: m.quantity + materialQty } : m)));
     } else {
-      newTemp.push({ yarnId: Number(selectedYarnId), quantity: materialQty });
+      setTempMaterials([...tempMaterials, { yarnId: Number(selectedYarnId), quantity: materialQty }]);
     }
-    
-    setTempMaterials(newTemp);
-    setSelectedYarnId(''); 
+    setSelectedYarnId('');
     setMaterialQty(1);
   };
 
-  const removeMaterialFromList = (index: number) => {
-    const newTemp = tempMaterials.filter((_, i) => i !== index);
-    setTempMaterials(newTemp);
+  const removeMaterialFromList = (index: number) => setTempMaterials(tempMaterials.filter((_, i) => i !== index));
+
+  const getYarnName = (id: number) => {
+    const y = yarns.find(item => item.id === id);
+    return y ? `${y.brand} — ${y.colorName}` : 'Неизвестная пряжа';
   };
 
   const createProject = () => {
-    if (!title) { toast('Введите название'); return; }
+    if (!title.trim()) { toast('Введите название'); return; }
     if (tempMaterials.length === 0) { toast('Добавьте хотя бы один моток'); return; }
 
-    for (let mat of tempMaterials) {
+    for (const mat of tempMaterials) {
       const currentAvailable = getAvailableStock(mat.yarnId, yarns, projects);
-      
       if (mat.quantity > currentAvailable) {
-        const yarnName = getYarnName(mat.yarnId);
-        toast(`Не хватает «${yarnName}»: нужно ${mat.quantity}, доступно ${currentAvailable}`);
+        toast(`Не хватает «${getYarnName(mat.yarnId)}»: нужно ${mat.quantity}, доступно ${currentAvailable}`);
         return;
       }
     }
 
     const newProject: Project = {
       id: Date.now(),
-      title,
+      title: title.trim(),
       status,
       materials: tempMaterials,
       createdAt: Date.now(),
       currentRows: 0,
       targetRows: Number(targetRowsStr) > 0 ? Math.floor(Number(targetRowsStr)) : undefined,
     };
-
     setProjects([newProject, ...projects]);
     handleClose();
   };
 
-  const getYarnName = (id: number) => {
-    const y = yarns.find(item => item.id === id);
-    return y ? `${y.brand} - ${y.colorName}` : "Неизвестная пряжа";
-  };
-
   const startKnitting = (projectId: number) => {
-    setProjects(projects.map(p => p.id === projectId ? {...p, status: 'in_progress'} : p));
+    setProjects(projects.map(p => (p.id === projectId ? { ...p, status: 'in_progress' } : p)));
     navigate(`/counter/${projectId}`);
   };
 
+  const count = (s: Project['status']) => projects.filter(p => p.status === s).length;
+  const subtitle = projects.length === 0
+    ? 'Пока ничего нет'
+    : [
+        count('in_progress') && `${count('in_progress')} в работе`,
+        count('planned') && `${count('planned')} в планах`,
+        count('finished') && `${count('finished')} готово`,
+      ].filter(Boolean).join(' · ');
+
   return (
-    <Container sx={{ mt: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h5" component="h1">Изделия</Typography>
-        <Fab color="primary" aria-label="Новое изделие" onClick={handleOpen} sx={fabSx}><AddIcon /></Fab>
-      </Stack>
+    <Container sx={{ pb: 12 }}>
+      <PageHeader title="Изделия" subtitle={subtitle} />
 
-      {projects.length === 0 && <Typography color="text.secondary">Нет активных проектов.</Typography>}
-
-      <List>
-        {projects.map((proj) => (
-          <ListItem key={proj.id} disablePadding>
-            <Card sx={{ width: '100%', mb: 2, bgcolor: proj.status === 'finished' ? 'var(--md-surface-container-high)' : 'background.paper' }}>
-              <CardContent>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6">{proj.title}</Typography>
-                  <Chip 
-                    label={STATUS_LABEL[proj.status]} 
-                    color={proj.status === 'finished' ? 'success' : proj.status === 'in_progress' ? 'warning' : 'default'} 
-                    size="small"
-                  />
-                </Stack>
-                
-                <Box mt={2}>
-                  <Typography variant="caption" color="text.secondary">Материалы:</Typography>
-                  <Stack spacing={0.5} mt={0.5}>
-                    {proj.materials.map((mat, idx) => (
-                      <Typography key={idx} variant="body2">
-                        • {getYarnName(mat.yarnId)} — {mat.quantity} мотк.
-                      </Typography>
-                    ))}
-                  </Stack>
+      {projects.length === 0 ? (
+        <EmptyState icon={<CheckroomOutlinedIcon />} title="Изделий пока нет"
+          text="Создайте изделие, выберите пряжу со склада, и она будет зарезервирована под проект."
+          action={<Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>Новое изделие</Button>} />
+      ) : (
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
+          {projects.map(proj => {
+            const rows = proj.currentRows ?? 0;
+            return (
+              <Card key={proj.id} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, opacity: proj.status === 'finished' ? 0.85 : 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>{proj.title}</Typography>
+                  <Chip size="small" label={STATUS_LABEL[proj.status]} sx={{ ...STATUS_STYLE[proj.status], flexShrink: 0 }} />
                 </Box>
 
-                {(proj.currentRows ?? 0) > 0 && (
-                  <Box mt={2}>
-                    <Typography variant="caption" color="text.secondary">Ряды: {proj.currentRows}{proj.targetRows ? ` из ${proj.targetRows}` : ''}</Typography>
-                    {proj.targetRows ? <LinearProgress variant="determinate" value={Math.min(100, ((proj.currentRows ?? 0) / proj.targetRows) * 100)} sx={{ mt: 1 }} /> : null}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {proj.materials.map((mat, idx) => {
+                    const y = yarns.find(item => item.id === mat.yarnId);
+                    return (
+                      <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        {y && <YarnThumb yarn={y} size={36} radius="10px" />}
+                        <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }} noWrap>{getYarnName(mat.yarnId)}</Typography>
+                        <Typography variant="body2" color="text.secondary">× {mat.quantity}</Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+
+                {rows > 0 && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Ряды: {rows}{proj.targetRows ? ` из ${proj.targetRows}` : ''}
+                    </Typography>
+                    {proj.targetRows ? <LinearProgress variant="determinate" value={Math.min(100, (rows / proj.targetRows) * 100)} sx={{ mt: 0.5 }} /> : null}
                   </Box>
                 )}
 
-                <Stack direction="row" spacing={1} mt={2}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                   {proj.status !== 'finished' && (
-                    <Button 
-                      variant="contained" 
-                      size="small" 
-                      startIcon={<TimerIcon />}
-                      onClick={() => startKnitting(proj.id)}
-                    >
-                      Вязать
-                    </Button>
+                    <Button variant="contained" startIcon={<TimerIcon />} onClick={() => startKnitting(proj.id)}>Вязать</Button>
                   )}
-                  <Button 
-                    variant="outlined" 
-                    size="small" 
-                    color="error"
+                  <Box sx={{ flex: 1 }} />
+                  <IconButton color="error" aria-label="Удалить изделие"
                     onClick={async () => {
-                       if (await confirm({ title: `Удалить «${proj.title}»?`, ok: 'Удалить', danger: true })) {
-                         setProjects(projects.filter(p => p.id !== proj.id));
-                       }
-                    }}
-                  >
-                    Удалить
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          </ListItem>
-        ))}
-      </List>
+                      if (await confirm({ title: `Удалить «${proj.title}»?`, ok: 'Удалить', danger: true })) {
+                        setProjects(projects.filter(p => p.id !== proj.id));
+                      }
+                    }}>
+                    <DeleteOutlinedIcon />
+                  </IconButton>
+                </Box>
+              </Card>
+            );
+          })}
+        </Box>
+      )}
+
+      {projects.length > 0 && <Fab color="primary" aria-label="Новое изделие" onClick={handleOpen} sx={fabSx}><AddIcon /></Fab>}
 
       <Modal open={open} onClose={handleClose}>
         <Box sx={modalStyle}>
-          <Stack direction="row" justifyContent="space-between" mb={2}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
             <Typography variant="h6">Новое изделие</Typography>
-            <IconButton onClick={handleClose} size="small"><CloseIcon /></IconButton>
-          </Stack>
+            <IconButton onClick={handleClose} aria-label="Закрыть"><CloseIcon /></IconButton>
+          </Box>
 
-          <TextField fullWidth margin="dense" label="Название проекта" value={title} onChange={(e) => setTitle(e.target.value)} />
-          
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Статус</InputLabel>
-            <Select value={status} label="Статус" onChange={(e) => setStatus(e.target.value as any)}>
-              <MenuItem value="planned">Планируется</MenuItem>
-              <MenuItem value="in_progress">В работе</MenuItem>
-              <MenuItem value="finished">Готово</MenuItem>
-            </Select>
-          </FormControl>
+          <TextField fullWidth margin="dense" label="Название" value={title} onChange={(e) => setTitle(e.target.value)} />
 
-          <TextField fullWidth margin="dense" type="number" label="Всего рядов (необязательно)" value={targetRowsStr} onChange={(e) => setTargetRowsStr(e.target.value)} />
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: '1fr 1fr' }}>
+            <FormControl fullWidth margin="dense">
+              <InputLabel>Статус</InputLabel>
+              <Select value={status} label="Статус" onChange={(e) => setStatus(e.target.value as Project['status'])}>
+                <MenuItem value="planned">Планируется</MenuItem>
+                <MenuItem value="in_progress">В работе</MenuItem>
+                <MenuItem value="finished">Готово</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField fullWidth margin="dense" type="number" label="Всего рядов" value={targetRowsStr} onChange={(e) => setTargetRowsStr(e.target.value)}
+              slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }} />
+          </Box>
+
           <Divider sx={{ my: 2 }} />
-          <Typography variant="subtitle2" gutterBottom>Добавить материалы:</Typography>
-          
+          <Typography variant="overline" color="text.secondary">Пряжа для изделия</Typography>
+
           <FormControl fullWidth margin="dense">
-            <InputLabel>Выбрать пряжу со склада</InputLabel>
-            <Select 
-              value={selectedYarnId} 
-              label="Выбрать пряжу" 
-              onChange={(e) => setSelectedYarnId(Number(e.target.value))}
-            >
-              {yarns.map(y => {
-                 const avail = getAvailableStock(y.id, yarns, projects);
-                 return (
-                  <MenuItem key={y.id} value={y.id}>
-                    {y.brand} - {y.colorName} (доступно: {avail})
-                  </MenuItem>
-                );
-              })}
+            <InputLabel>Выбрать со склада</InputLabel>
+            <Select value={selectedYarnId} label="Выбрать со склада" onChange={(e) => setSelectedYarnId(Number(e.target.value))}>
+              {yarns.map(y => (
+                <MenuItem key={y.id} value={y.id}>
+                  {y.brand} — {y.colorName} (доступно: {getAvailableStock(y.id, yarns, projects)})
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
 
-          <Stack direction="row" spacing={2} alignItems="center" mt={1}>
-            <TextField 
-              type="number" 
-              label="Кол-во" 
-              value={materialQty} 
-              onChange={(e) => setMaterialQty(Number(e.target.value))}
-              sx={{ width: 100 }}
-            />
-            <Button variant="outlined" onClick={addMaterialToList} disabled={!selectedYarnId}>
-              Добавить в список
-            </Button>
-          </Stack>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+            <TextField type="number" label="Кол-во" value={materialQty} onChange={(e) => setMaterialQty(Number(e.target.value))}
+              sx={{ width: 110 }} slotProps={{ htmlInput: { min: 1, inputMode: 'numeric' } }} />
+            <Button variant="outlined" onClick={addMaterialToList} disabled={!selectedYarnId}>Добавить</Button>
+          </Box>
 
           {tempMaterials.length > 0 && (
-            <Box mt={2} p={1} bgcolor="var(--md-surface-container-high)" borderRadius={1}>
+            <Box sx={{ mt: 2, p: 1.5, borderRadius: '16px', bgcolor: 'var(--md-surface-container)' }}>
               {tempMaterials.map((m, idx) => (
-                <Stack key={idx} direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2">{getYarnName(m.yarnId)} x{m.quantity}</Typography>
-                  <IconButton size="small" onClick={() => removeMaterialFromList(idx)}><DeleteIcon fontSize="small"/></IconButton>
-                </Stack>
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                  <Typography variant="body2" sx={{ minWidth: 0 }} noWrap>{getYarnName(m.yarnId)} × {m.quantity}</Typography>
+                  <IconButton size="small" aria-label="Убрать" onClick={() => removeMaterialFromList(idx)}><DeleteIcon fontSize="small" /></IconButton>
+                </Box>
               ))}
             </Box>
           )}
 
-          <Button fullWidth variant="contained" color="secondary" sx={{ mt: 3 }} onClick={createProject}>
-            Создать проект
-          </Button>
+          <Button fullWidth variant="contained" size="large" sx={{ mt: 3, height: 52 }} onClick={createProject}>Создать изделие</Button>
         </Box>
       </Modal>
     </Container>

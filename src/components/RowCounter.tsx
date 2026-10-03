@@ -24,7 +24,7 @@ export function RowCounter({ title, subtitle, count, target, onChange, children 
 
   return (
     <Box sx={{ minHeight: 'calc(100dvh - 160px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, px: 2 }}>
-      <Box textAlign="center">
+      <Box sx={{ textAlign: 'center' }}>
         <Typography variant="h5" component="h1">{title}</Typography>
         {subtitle && <Typography variant="body2" color="text.secondary">{subtitle}</Typography>}
       </Box>
