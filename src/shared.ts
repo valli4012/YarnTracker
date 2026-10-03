@@ -1,9 +1,12 @@
-// Flexible navigation bar M3: высота 64dp, контейнер на всю ширину (corner-none).
-// Safe area входит в полосу как window inset, а не как внешнее поле.
-export const NAV_BAR_HEIGHT = 64;
-export const navClearance = `calc(${NAV_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`;
-// FAB и снэкбар на 16px выше верхнего края полосы.
-export const aboveNav = `calc(${NAV_BAR_HEIGHT + 16}px + env(safe-area-inset-bottom, 0px))`;
+// Плавающий островок: высота 80px, радиус — половина высоты (торцы-полукруги).
+// Отступ 16px от краёв и от низа; safe area поднимает островок над индикатором Home.
+export const NAV_BAR_HEIGHT = 80;
+export const NAV_FLOAT_INSET = 16;
+export const NAV_PILL_RADIUS = NAV_BAR_HEIGHT / 2;
+export const navDockBottom = `calc(${NAV_FLOAT_INSET}px + env(safe-area-inset-bottom, 0px))`;
+export const navClearance = `calc(${NAV_BAR_HEIGHT + NAV_FLOAT_INSET * 2}px + env(safe-area-inset-bottom, 0px))`;
+// FAB и снэкбар на 16px выше верхнего края островка.
+export const aboveNav = navClearance;
 
 export const fabSx = { position: 'fixed' as const, right: 16, bottom: aboveNav, zIndex: 1100 };
 

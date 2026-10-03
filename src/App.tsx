@@ -4,7 +4,7 @@ import InventoryIcon from '@mui/icons-material/Inventory2';
 import CheckroomIcon from '@mui/icons-material/Checkroom';
 import TimerIcon from '@mui/icons-material/Timer';
 import { useStoredState } from './storage';
-import { INITIAL_PROJECTS, INITIAL_YARNS, STORAGE_KEY_PROJECTS, STORAGE_KEY_YARNS, navClearance, sanitizeProjects, sanitizeYarns, type Project, type Yarn } from './shared';
+import { INITIAL_PROJECTS, INITIAL_YARNS, NAV_PILL_RADIUS, STORAGE_KEY_PROJECTS, STORAGE_KEY_YARNS, navClearance, navDockBottom, sanitizeProjects, sanitizeYarns, type Project, type Yarn } from './shared';
 import { InventoryPage } from './pages/InventoryPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
@@ -28,12 +28,12 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      <Paper component="nav" elevation={2}
-        sx={{ position: 'fixed', zIndex: 1000, bottom: 0, left: 0, right: 0, borderRadius: 0,
-          bgcolor: 'var(--md-surface-container)',
-          pb: 'env(safe-area-inset-bottom, 0px)',
-          pl: 'env(safe-area-inset-left, 0px)',
-          pr: 'env(safe-area-inset-right, 0px)' }}>
+      <Paper component="nav" elevation={3}
+        sx={{ position: 'fixed', zIndex: 1000, overflow: 'hidden',
+          borderRadius: `${NAV_PILL_RADIUS}px`,
+          left: 'max(16px, env(safe-area-inset-left, 0px))',
+          right: 'max(16px, env(safe-area-inset-right, 0px))',
+          bottom: navDockBottom, bgcolor: 'var(--md-surface-container)' }}>
         <BottomNavigation showLabels value={tab}>
           <BottomNavigationAction label="Склад" icon={<InventoryIcon />} component={Link} to="/" />
           <BottomNavigationAction label="Изделия" icon={<CheckroomIcon />} component={Link} to="/projects" />
