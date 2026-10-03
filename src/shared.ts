@@ -33,6 +33,25 @@ export interface Yarn {
   photoData?: string;
 }
 export interface ProjectMaterial { yarnId: number; quantity: number; }
+
+// Этап изделия: «рукава», «туловище», «манжеты». Название обязательно, целевые ряды — нет.
+// Счётчик рядов у каждого этапа свой; done нужен только этапам без целевых рядов.
+export interface ProjectStage {
+  id: number;
+  title: string;
+  targetRows?: number;
+  currentRows?: number;
+  done: boolean;
+}
+
+// Отдельная запись-заметка к изделию. Ссылки живут прямо в тексте.
+export interface ProjectNote {
+  id: number;
+  createdAt: number;
+  title?: string;
+  text: string;
+}
+
 export interface Project {
   id: number;
   title: string;
@@ -41,6 +60,8 @@ export interface Project {
   createdAt: number;
   currentRows?: number;
   targetRows?: number;
+  stages: ProjectStage[];
+  notes: ProjectNote[];
 }
 
 // --- КОНСТАНТЫ ХРАНЕНИЯ ---
@@ -107,6 +128,12 @@ export const modalStyle = {
 
 export const STATUS_LABEL = { planned: 'План', in_progress: 'В работе', finished: 'Готово' } as const;
 
+export const STATUS_STYLE: Record<Project['status'], { bgcolor: string; color: string }> = {
+  planned: { bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' },
+  in_progress: { bgcolor: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' },
+  finished: { bgcolor: 'var(--md-surface-container-highest)', color: 'var(--md-on-surface-variant)' },
+};
+
 // --- ОЧИСТКА ДАННЫХ ИЗ localStorage ---
 // Данные из старых версий альфы могут не иметь новых полей (например, materials). Без этого страница склада падала при рендере.
 const str = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v));
@@ -132,6 +159,36 @@ export const sanitizeYarns = (raw: unknown): Yarn[] => {
   }));
 };
 
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object';
+
+// Этапы и заметки появились позже изделий: у записей из хранилища этих полей нет, и это нормально — получают пустой массив.
+const sanitizeStages = (raw: unknown): ProjectStage[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(isRecord)
+    .map((s, i): ProjectStage => ({
+      id: num(s.id, Date.now() + i),
+      title: str(s.title).trim(),
+      targetRows: s.targetRows == null || s.targetRows === '' ? undefined : num(s.targetRows),
+      currentRows: s.currentRows == null ? undefined : num(s.currentRows),
+      done: s.done === true,
+    }))
+    .filter(s => s.title !== ''); // этап без названия показывать нечем
+};
+
+const sanitizeNotes = (raw: unknown): ProjectNote[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(isRecord)
+    .map((n, i): ProjectNote => ({
+      id: num(n.id, Date.now() + i),
+      createdAt: num(n.createdAt, Date.now()),
+      title: str(n.title).trim() === '' ? undefined : str(n.title).trim(),
+      text: str(n.text),
+    }))
+    .filter(n => n.text.trim() !== ''); // пустых заметок не бывает
+};
+
 export const sanitizeProjects = (raw: unknown): Project[] => {
   if (!Array.isArray(raw)) return INITIAL_PROJECTS;
   const statuses = ['planned', 'in_progress', 'finished'];
@@ -145,6 +202,8 @@ export const sanitizeProjects = (raw: unknown): Project[] => {
     createdAt: num(p.createdAt, Date.now()),
     currentRows: p.currentRows == null ? undefined : num(p.currentRows),
     targetRows: p.targetRows == null ? undefined : num(p.targetRows),
+    stages: sanitizeStages(p.stages),
+    notes: sanitizeNotes(p.notes),
   }));
 };
 
@@ -152,6 +211,59 @@ export const sanitizeProjects = (raw: unknown): Project[] => {
 export const plural = (n: number, forms: [string, string, string]) => {
   const a = Math.abs(n) % 100, b = a % 10;
   return a > 10 && a < 20 ? forms[2] : b > 1 && b < 5 ? forms[1] : b === 1 ? forms[0] : forms[2];
+};
+
+export const rowsWord = (n: number) => plural(n, ['ряд', 'ряда', 'рядов']); // 1 ряд, 2 ряда, 5 рядов
+// После «из» существительное идёт в родительном падеже: «из 1 ряда», но «из 2 рядов»
+export const rowsOfWord = (n: number) => plural(n, ['ряда', 'рядов', 'рядов']);
+export const stagesOfWord = (n: number) => plural(n, ['этапа', 'этапов', 'этапов']);
+
+// Этап с целевыми рядами готов, когда ряды связаны; без цели — только по ручной отметке,
+// чтобы у готовности не было двух источников правды.
+export const isStageDone = (s: ProjectStage) => (s.targetRows ? (s.currentRows ?? 0) >= s.targetRows : s.done);
+
+// Если у изделия есть этапы, вяжут всегда этап, поэтому ряды этапов идут в общий счёт.
+// Свой счётчик изделия при этом не теряется: ряды, связанные до появления этапов, остаются.
+export const getProjectRows = (p: Project) =>
+  (p.currentRows ?? 0) + p.stages.reduce((sum, s) => sum + (s.currentRows ?? 0), 0);
+
+export interface ProjectProgress { kind: 'finished' | 'rows' | 'stages' | 'none'; value: number; label: string }
+
+// Прогресс изделия одним местом: плитка в списке и карточка показывают одно и то же.
+// Приоритет: целевые ряды → готовые этапы → считать нечем.
+export const getProjectProgress = (p: Project): ProjectProgress => {
+  if (p.status === 'finished') return { kind: 'finished', value: 100, label: 'Готово' };
+
+  if (p.targetRows) {
+    const rows = getProjectRows(p);
+    return {
+      kind: 'rows',
+      value: Math.min(100, Math.round((rows / p.targetRows) * 100)),
+      label: `${rows} из ${p.targetRows} ${rowsOfWord(p.targetRows)}`,
+    };
+  }
+
+  if (p.stages.length > 0) {
+    const done = p.stages.filter(isStageDone).length;
+    return {
+      kind: 'stages',
+      value: Math.round((done / p.stages.length) * 100),
+      label: `${done} из ${p.stages.length} ${stagesOfWord(p.stages.length)} готово`,
+    };
+  }
+
+  return { kind: 'none', value: 0, label: 'Прогресс не рассчитывается' };
+};
+
+export const PROGRESS_HELP = 'Прогресс считается, только если у изделия указано целевое количество рядов или добавлены этапы. Укажите цель по рядам — полоска пойдёт по связанным рядам. Добавьте этапы — по количеству готовых этапов.';
+
+// Завершение изделия: пряжа списывается со склада. Нужно и на счётчике, и в карточке.
+export const finishProjectState = (project: Project, projects: Project[], yarns: Yarn[]) => {
+  const used = new Map(project.materials.map(m => [m.yarnId, m.quantity]));
+  return {
+    projects: projects.map(p => (p.id === project.id ? { ...p, status: 'finished' as const } : p)),
+    yarns: yarns.map(y => (used.has(y.id) ? { ...y, stock: Math.max(0, y.stock - used.get(y.id)!) } : y)),
+  };
 };
 
 // Сколько мотков зарезервировано в изделиях (запланированных и в работе)

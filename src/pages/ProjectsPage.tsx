@@ -76,6 +76,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
       createdAt: Date.now(),
       currentRows: 0,
       targetRows: Number(targetRowsStr) > 0 ? Math.floor(Number(targetRowsStr)) : undefined,
+      stages: [],
+      notes: [],
     };
     setProjects([newProject, ...projects]);
     handleClose();
