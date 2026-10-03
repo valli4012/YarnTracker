@@ -91,7 +91,7 @@ export function VoiceCounter({ count, onChange }: Props) {
       </Typography>
 
       <Collapse in={listening}>
-        <Stack sx={{ mt: 0.5, p: 1.5, borderRadius: '16px', bgcolor: 'var(--md-surface-container)' }}>
+        <Stack sx={{ mt: 0.5, p: 1.5, borderRadius: '20px', bgcolor: 'var(--md-surface-container)' }}>
           {VOICE_COMMANDS_HINT.map(line => (
             <Typography key={line} variant="caption" color="text.secondary">{line}</Typography>
           ))}
