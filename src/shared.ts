@@ -1,7 +1,10 @@
-// Плавающий островок: высота 80px, радиус — половина высоты (торцы-полукруги).
-// Отступ 16px от краёв и от низа; safe area поднимает островок над индикатором Home.
-export const NAV_BAR_HEIGHT = 80;
+// Плавающий островок-пилюля. Высота чуть больше 80, радиус — половина высоты.
+// По бокам не 16px: минимум 64px фона, и ширина не больше 300px, иначе на телефоне
+// это снова полоса и круглые торцы не читаются.
+export const NAV_BAR_HEIGHT = 88;
 export const NAV_FLOAT_INSET = 16;
+export const NAV_SIDE_INSET = 64;
+export const NAV_MAX_WIDTH = 300;
 export const NAV_PILL_RADIUS = NAV_BAR_HEIGHT / 2;
 export const navDockBottom = `calc(${NAV_FLOAT_INSET}px + env(safe-area-inset-bottom, 0px))`;
 export const navClearance = `calc(${NAV_BAR_HEIGHT + NAV_FLOAT_INSET * 2}px + env(safe-area-inset-bottom, 0px))`;
