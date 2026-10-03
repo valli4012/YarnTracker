@@ -20,42 +20,54 @@ const hasTrustedCert = existsSync(certFile) && existsSync(keyFile)
 // недоступны микрофон и установка PWA.
 // Обычный `npm run dev` остаётся на http: на localhost это уже secure context,
 // и сертификат там только мешает.
+// Приложение живёт в корне домена. Пути иконок в манифесте склеиваются с base,
+// чтобы при переезде на подпуть (например GitHub Pages) ничего не отвалилось:
+// относительные пути в манифесте считаются от самого манифеста, а не от base.
+const base = '/'
+
+// Иконки домашнего экрана отдаём только непрозрачными PNG: iOS заливает
+// прозрачные области чёрным, Android показывает иконку purpose: any как есть.
+const icons = [
+  { src: `${base}icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any' as const },
+  { src: `${base}icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any' as const },
+  { src: `${base}icon-maskable-192.png`, sizes: '192x192', type: 'image/png', purpose: 'maskable' as const },
+  { src: `${base}icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' as const },
+]
+
 export default defineConfig(({ command, mode }) => {
-  const useHttps = command === 'serve' && mode === 'https'
+  const useHttps = mode === 'https'
+  const https = useHttps && hasTrustedCert
+    ? { cert: readFileSync(certFile), key: readFileSync(keyFile) }
+    : undefined
 
   return {
+    base,
     build: { target: ['es2020', 'safari14'] },
-    server: {
-      host: true,
-      port: 5173,
-      https: useHttps && hasTrustedCert
-        ? { cert: readFileSync(certFile), key: readFileSync(keyFile) }
-        : undefined,
-    },
-    preview: { host: true, port: 4173 },
+    server: { host: true, port: 5173, https: command === 'serve' ? https : undefined },
+    preview: { host: true, port: 4173, https },
     plugins: [
       react(),
-      ...(useHttps && !hasTrustedCert ? [basicSsl({ name: 'yarntracker-dev' })] : []),
+      ...(command === 'serve' && useHttps && !hasTrustedCert ? [basicSsl({ name: 'yarntracker-dev' })] : []),
       VitePWA({
         registerType: 'autoUpdate',
         devOptions: { enabled: true }, // манифест и иконки доступны и в npm run dev
-        includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+        includeAssets: ['favicon.ico', 'favicon-96.png', 'apple-touch-icon.png'],
+        // по умолчанию workbox не кладёт шрифты в офлайн-кеш, и без сети текст
+        // уезжает на системный шрифт
+        workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'] },
         manifest: {
           name: 'Учет Пряжи',
           short_name: 'Пряжа',
           description: 'Личный трекер вязальных проектов',
-          theme_color: '#FEF7FF',
-          background_color: '#FEF7FF',
+          theme_color: '#FFF8F7',
+          background_color: '#FFF8F7',
           lang: 'ru',
-          id: '/',
-          start_url: '/',
+          id: base,
+          scope: base,
+          start_url: base,
           display: 'standalone',
           orientation: 'portrait',
-          icons: [
-            { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
-          ]
+          icons,
         }
       })
     ],
