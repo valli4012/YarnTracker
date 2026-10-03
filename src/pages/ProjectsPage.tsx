@@ -1,28 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Card, Chip, Container, Divider, Fab, FormControl, IconButton, InputLabel, LinearProgress, MenuItem, Modal, Select, TextField, Typography } from '@mui/material';
+import { Box, Button, Card, CardActionArea, Container, Divider, Fab, FormControl, IconButton, InputLabel, LinearProgress, MenuItem, Modal, Select, TextField, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import TimerIcon from '@mui/icons-material/Timer';
-import { fabSx, getAvailableStock, modalStyle, STATUS_LABEL, type Project, type ProjectMaterial, type Yarn } from '../shared';
+import { fabSx, getAvailableStock, getProjectProgress, modalStyle, type Project, type ProjectMaterial, type Yarn } from '../shared';
 import { useFeedback } from '../feedback';
 import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
-import { YarnThumb } from '../components/YarnThumb';
-
-const STATUS_STYLE: Record<Project['status'], { bgcolor: string; color: string }> = {
-  planned: { bgcolor: 'var(--md-secondary-container)', color: 'var(--md-on-secondary-container)' },
-  in_progress: { bgcolor: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)' },
-  finished: { bgcolor: 'var(--md-surface-container-highest)', color: 'var(--md-on-surface-variant)' },
-};
 
 export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Project[]; setProjects: any; yarns: Yarn[] }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { confirm, toast } = useFeedback();
+  const { toast } = useFeedback();
   const [targetRowsStr, setTargetRowsStr] = useState('');
 
   const [title, setTitle] = useState('');
@@ -83,11 +74,6 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
     handleClose();
   };
 
-  const startKnitting = (projectId: number) => {
-    setProjects(projects.map(p => (p.id === projectId ? { ...p, status: 'in_progress' } : p)));
-    navigate(`/counter/${projectId}`);
-  };
-
   const count = (s: Project['status']) => projects.filter(p => p.status === s).length;
   const subtitle = projects.length === 0
     ? 'Пока ничего нет'
@@ -108,50 +94,15 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
       ) : (
         <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' } }}>
           {projects.map(proj => {
-            const rows = proj.currentRows ?? 0;
+            const progress = getProjectProgress(proj);
             return (
-              <Card key={proj.id} sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5, opacity: proj.status === 'finished' ? 0.85 : 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
+              <Card key={proj.id} sx={{ opacity: proj.status === 'finished' ? 0.85 : 1 }}>
+                {/* На плитке только название и прогресс — подробности на экране изделия */}
+                <CardActionArea onClick={() => navigate(`/projects/${proj.id}`)} sx={{ p: 2, display: 'block' }}>
                   <Typography variant="h6" sx={{ wordBreak: 'break-word' }}>{proj.title}</Typography>
-                  <Chip size="small" label={STATUS_LABEL[proj.status]} sx={{ ...STATUS_STYLE[proj.status], flexShrink: 0 }} />
-                </Box>
-
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {proj.materials.map((mat, idx) => {
-                    const y = yarns.find(item => item.id === mat.yarnId);
-                    return (
-                      <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        {y && <YarnThumb yarn={y} size={36} radius="10px" />}
-                        <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }} noWrap>{getYarnName(mat.yarnId)}</Typography>
-                        <Typography variant="body2" color="text.secondary">× {mat.quantity}</Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-
-                {rows > 0 && (
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">
-                      Ряды: {rows}{proj.targetRows ? ` из ${proj.targetRows}` : ''}
-                    </Typography>
-                    {proj.targetRows ? <LinearProgress variant="determinate" value={Math.min(100, (rows / proj.targetRows) * 100)} sx={{ mt: 0.5 }} /> : null}
-                  </Box>
-                )}
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                  {proj.status !== 'finished' && (
-                    <Button variant="contained" startIcon={<TimerIcon />} onClick={() => startKnitting(proj.id)}>Вязать</Button>
-                  )}
-                  <Box sx={{ flex: 1 }} />
-                  <IconButton color="error" aria-label="Удалить изделие"
-                    onClick={async () => {
-                      if (await confirm({ title: `Удалить «${proj.title}»?`, ok: 'Удалить', danger: true })) {
-                        setProjects(projects.filter(p => p.id !== proj.id));
-                      }
-                    }}>
-                    <DeleteOutlinedIcon />
-                  </IconButton>
-                </Box>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>{progress.label}</Typography>
+                  <LinearProgress variant="determinate" value={progress.value} sx={{ mt: 1 }} />
+                </CardActionArea>
               </Card>
             );
           })}

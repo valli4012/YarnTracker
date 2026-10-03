@@ -5,6 +5,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import { STATUS_LABEL, type Project, type Yarn } from '../shared';
+import { DetailRow, Section } from './detail';
 import { YarnThumb } from './YarnThumb';
 
 const SlideUp = forwardRef(function SlideUp(props: TransitionProps & { children: ReactElement }, ref: Ref<unknown>) {
@@ -12,20 +13,6 @@ const SlideUp = forwardRef(function SlideUp(props: TransitionProps & { children:
 });
 
 const SEGMENT_COLORS = ['var(--md-primary)', 'var(--md-tertiary)', 'var(--md-secondary)', 'var(--md-outline)'];
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <Box component="section" sx={{ mt: 3 }}>
-    <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1, px: 0.5 }}>{title}</Typography>
-    {children}
-  </Box>
-);
-
-const Row = ({ label, value }: { label: string; value: string }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 1.5, '&:not(:last-of-type)': { borderBottom: '1px solid var(--md-outline-variant)' } }}>
-    <Typography variant="body1" color="text.secondary">{label}</Typography>
-    <Typography variant="body1" sx={{ textAlign: 'right' }}>{value}</Typography>
-  </Box>
-);
 
 const Tile = ({ value, label, accent }: { value: number; label: string; accent?: boolean }) => (
   <Box sx={{ flex: 1, borderRadius: '16px', py: 1.5, px: 1, textAlign: 'center',
@@ -80,11 +67,11 @@ export function YarnDetail({ yarn, available, usedIn, onClose, onEdit, onDelete 
 
             <Section title="Характеристики">
               <Box sx={{ borderRadius: '20px', bgcolor: 'var(--md-surface-container)', px: 2 }}>
-                <Row label="Вес мотка" value={`${yarn.weight} г`} />
-                <Row label="Метраж мотка" value={`${yarn.length} м`} />
-                <Row label="Метров на складе" value={`${yarn.length * yarn.stock} м`} />
-                {yarn.needleSize && <Row label="Спицы" value={`${yarn.needleSize} мм`} />}
-                {yarn.hookSize && <Row label="Крючок" value={`${yarn.hookSize} мм`} />}
+                <DetailRow label="Вес мотка" value={`${yarn.weight} г`} />
+                <DetailRow label="Метраж мотка" value={`${yarn.length} м`} />
+                <DetailRow label="Метров на складе" value={`${yarn.length * yarn.stock} м`} />
+                {yarn.needleSize && <DetailRow label="Спицы" value={`${yarn.needleSize} мм`} />}
+                {yarn.hookSize && <DetailRow label="Крючок" value={`${yarn.hookSize} мм`} />}
               </Box>
             </Section>
 

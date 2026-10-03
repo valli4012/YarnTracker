@@ -1,47 +1,77 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Button, Container, Stack, Typography } from '@mui/material';
+import { Box, Button, Container, Typography } from '@mui/material';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { RowCounter } from '../components/RowCounter';
+import { NoteSheet } from '../components/NoteSheet';
 import { useFeedback } from '../feedback';
 import { useStoredState } from '../storage';
-import { STATUS_LABEL, STORAGE_KEY_STANDALONE_COUNTER, type Project, type Yarn } from '../shared';
+import { finishProjectState, STATUS_LABEL, STORAGE_KEY_STANDALONE_COUNTER, tonalSx, type Project, type Yarn } from '../shared';
 
 interface Props { projects: Project[]; setProjects: (p: Project[]) => void; yarns: Yarn[]; setYarns: (y: Yarn[]) => void }
 
 export const CounterPage = ({ projects, setProjects, yarns, setYarns }: Props) => {
-  const projectId = Number(useParams().id);
+  const params = useParams();
+  const projectId = Number(params.id);
+  const stageId = params.stageId == null ? null : Number(params.stageId);
   const navigate = useNavigate();
   const { confirm, toast } = useFeedback();
+  const [openNote, setOpenNote] = useState(false);
   const project = projects.find(p => p.id === projectId);
+  const stage = stageId == null ? undefined : project?.stages.find(s => s.id === stageId);
 
-  if (!project) {
+  if (!project || (stageId != null && !stage)) {
     return (
       <Container sx={{ mt: 4, textAlign: 'center' }}>
-        <Typography variant="h5">Изделие не найдено</Typography>
+        <Typography variant="h5">{project ? 'Этап не найден' : 'Изделие не найдено'}</Typography>
         <Button component={Link} to="/projects" sx={{ mt: 2 }}>К списку</Button>
       </Container>
     );
   }
 
-  const updateRows = (d: number) =>
-    setProjects(projects.map(p => p.id === projectId ? { ...p, currentRows: Math.max(0, (p.currentRows || 0) + d) } : p));
+  const update = (patch: Partial<Project>) => setProjects(projects.map(p => (p.id === projectId ? { ...p, ...patch } : p)));
+
+  // Этапы считают ряды каждый у себя, у изделия без этапов счётчик один
+  const updateRows = (d: number) => {
+    if (stage) {
+      update({ stages: project.stages.map(s => (s.id === stage.id ? { ...s, currentRows: Math.max(0, (s.currentRows ?? 0) + d) } : s)) });
+    } else {
+      update({ currentRows: Math.max(0, (project.currentRows ?? 0) + d) });
+    }
+  };
+
+  const addNote = ({ title, text }: { title?: string; text: string }) => {
+    update({ notes: [{ id: Date.now(), createdAt: Date.now(), title, text }, ...project.notes] });
+    setOpenNote(false);
+    toast('Заметка сохранена в изделии');
+  };
 
   const finish = async () => {
     if (!(await confirm({ title: 'Завершить изделие?', text: 'Пряжа будет списана со склада.', ok: 'Завершить' }))) return;
-    const used = new Map(project.materials.map(m => [m.yarnId, m.quantity]));
-    setYarns(yarns.map(y => used.has(y.id) ? { ...y, stock: Math.max(0, y.stock - used.get(y.id)!) } : y));
-    setProjects(projects.map(p => p.id === projectId ? { ...p, status: 'finished' as const } : p));
+    const next = finishProjectState(project, projects, yarns);
+    setYarns(next.yarns);
+    setProjects(next.projects);
     toast('Готово — пряжа списана со склада');
-    navigate('/projects');
+    navigate(`/projects/${projectId}`);
   };
 
   return (
-    <RowCounter title={project.title} subtitle={STATUS_LABEL[project.status]} count={project.currentRows || 0}
-      target={project.targetRows} onChange={updateRows}>
-      <Stack direction="row" spacing={1}>
-        <Button component={Link} to="/projects">К списку</Button>
+    <RowCounter title={project.title} subtitle={stage ? `Этап: ${stage.title}` : STATUS_LABEL[project.status]}
+      count={(stage ? stage.currentRows : project.currentRows) || 0}
+      target={stage ? stage.targetRows : project.targetRows} onChange={updateRows}>
+      {/* Заметка прямо во время вязания: сохраняется в это изделие */}
+      <Button onClick={() => setOpenNote(true)} startIcon={<EditNoteIcon />}
+        sx={{ width: '100%', maxWidth: 360, height: 56, borderRadius: '20px', fontSize: 16, ...tonalSx }}>
+        Заметка
+      </Button>
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 1 }}>
+        <Button component={Link} to={`/projects/${projectId}`}>К изделию</Button>
         <Button color="error" onClick={finish}>Завершить</Button>
-      </Stack>
+      </Box>
+
+      {openNote && <NoteSheet onClose={() => setOpenNote(false)} onSave={addNote} />}
     </RowCounter>
   );
 };
