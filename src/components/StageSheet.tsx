@@ -3,19 +3,22 @@ import { Box, Button, IconButton, Modal, TextField, Typography } from '@mui/mate
 import CloseIcon from '@mui/icons-material/Close';
 import TimerIcon from '@mui/icons-material/Timer';
 import { modalStyle, rowsWord, type ProjectStage } from '../shared';
+import { NumberField } from './NumberField';
 
 interface Props {
   stage?: ProjectStage; // не задан — создаём новый
-  canKnit: boolean;
+  canKnit?: boolean;
   onClose: () => void;
   onSave: (data: { title: string; targetRows?: number }) => void;
   onDelete: () => void;
-  onKnit: () => void;
+  onKnit?: () => void;
+  /** false в форме создания: рядов ещё нет, строка «Связано» только занимает место */
+  showKnitted?: boolean;
 }
 
 // Один лист и на добавление этапа, и на правку: поля те же.
 // Монтируется только на время показа, поэтому поля всегда начинаются с актуальных значений.
-export function StageSheet({ stage, canKnit, onClose, onSave, onDelete, onKnit }: Props) {
+export function StageSheet({ stage, canKnit = false, onClose, onSave, onDelete, onKnit, showKnitted = true }: Props) {
   const [title, setTitle] = useState(stage?.title ?? '');
   const [targetStr, setTargetStr] = useState(stage?.targetRows ? String(stage.targetRows) : '');
 
@@ -34,11 +37,10 @@ export function StageSheet({ stage, canKnit, onClose, onSave, onDelete, onKnit }
         </Box>
 
         <TextField fullWidth margin="dense" label="Название *" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <TextField fullWidth margin="dense" type="number" label="Целевые ряды" value={targetStr}
-          onChange={(e) => setTargetStr(e.target.value)} helperText="Необязательно. Если указать, готовность этапа посчитается по рядам."
-          slotProps={{ htmlInput: { min: 0, inputMode: 'numeric' } }} />
+        <NumberField fullWidth margin="dense" label="Целевые ряды" placeholder="необязательно" value={targetStr} onChange={setTargetStr}
+          helperText="Необязательно. Если указать, готовность этапа посчитается по рядам." />
 
-        {stage && (
+        {stage && showKnitted && (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1, px: 0.5 }}>
             Связано: {rows} {rowsWord(rows)}
           </Typography>
@@ -50,7 +52,7 @@ export function StageSheet({ stage, canKnit, onClose, onSave, onDelete, onKnit }
 
         {stage && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
-            {canKnit && (
+            {canKnit && onKnit && (
               <Button fullWidth variant="outlined" size="large" startIcon={<TimerIcon />} sx={{ height: 52 }} onClick={onKnit}>
                 Вязать этот этап
               </Button>
