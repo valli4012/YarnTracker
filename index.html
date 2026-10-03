@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#FEF7FF" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Пряжа" />
+    <title>Учёт пряжи</title>
+    <script>
+      // Диагностика: если приложение не стартовало (например, на старом Safari), покажем причину
+      function showErr(m) { var r = document.getElementById('root'); if (r && !r.childElementCount) r.innerHTML = '<pre style="padding:16px;white-space:pre-wrap;font:12px monospace;color:#B3261E"></pre>', r.firstChild.textContent = m; }
+      window.addEventListener('error', function (e) { showErr(e.message + ' ' + (e.filename || '') + ':' + e.lineno); });
+      window.addEventListener('unhandledrejection', function (e) { showErr(String(e.reason)); });
+      setTimeout(function () { showErr('Приложение не запустилось: скрипт не загрузился или не поддерживается.'); }, 5000);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

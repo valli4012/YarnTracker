@@ -1,0 +1,11 @@
+html, body, #root { min-height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;      /* нет «резинки» и pull-to-refresh */
+  -webkit-user-select: none; user-select: none;   /* UI не выделяется, как в нативных */
+  -webkit-touch-callout: none;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+::-webkit-scrollbar { display: none; }
