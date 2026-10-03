@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { defineConfig, type Connect, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -15,11 +15,6 @@ const certFile = resolve(certDir, 'cert.pem')
 const keyFile = resolve(certDir, 'key.pem')
 const hasTrustedCert = existsSync(certFile) && existsSync(keyFile)
 
-// `npm run dev:https` (mode=https) поднимает dev-сервер по https: с телефона
-// приложение открывается по IP машины, а это не secure context, без которого
-// недоступны микрофон и установка PWA.
-// Обычный `npm run dev` остаётся на http: на localhost это уже secure context,
-// и сертификат там только мешает.
 // Приложение живёт в корне домена. Пути иконок в манифесте склеиваются с base,
 // чтобы при переезде на подпуть (например GitHub Pages) ничего не отвалилось:
 // относительные пути в манифесте считаются от самого манифеста, а не от base.
@@ -34,6 +29,33 @@ const icons = [
   { src: `${base}icon-maskable-512.png`, sizes: '512x512', type: 'image/png', purpose: 'maskable' as const },
 ]
 
+// Vite отдаёт index.html на любой неизвестный путь, в том числе на `/foo.png`.
+// Для иконок это худший вариант: телефон запрашивает картинку, получает HTML со
+// статусом 200 и рисует пустой ярлык, а опечатка в пути не видна ни в логах, ни
+// в DevTools. Отвечаем честным 404.
+function imageNotFound(): Plugin {
+  const imageRequest = /\.(png|ico|jpe?g|gif|webp|avif)$/i
+
+  const middleware = (publicDir: string, root: string): Connect.NextHandleFunction => (req, res, next) => {
+    const pathname = decodeURIComponent((req.url ?? '/').split('?')[0])
+    if (!imageRequest.test(pathname)) return next()
+    const relative = pathname.replace(/^\/+/, '')
+    if (existsSync(resolve(publicDir, relative)) || existsSync(resolve(root, relative))) return next()
+    res.statusCode = 404
+    res.end('Not found')
+  }
+
+  return {
+    name: 'yarntracker:image-not-found',
+    configureServer: ({ middlewares, config }) => {
+      middlewares.use(middleware(config.publicDir, config.root))
+    },
+    configurePreviewServer: ({ middlewares, config }) => {
+      middlewares.use(middleware(resolve(config.root, config.build.outDir), config.root))
+    },
+  }
+}
+
 export default defineConfig(({ command, mode }) => {
   const useHttps = mode === 'https'
   const https = useHttps && hasTrustedCert
@@ -47,6 +69,7 @@ export default defineConfig(({ command, mode }) => {
     preview: { host: true, port: 4173, https },
     plugins: [
       react(),
+      imageNotFound(),
       ...(command === 'serve' && useHttps && !hasTrustedCert ? [basicSsl({ name: 'yarntracker-dev' })] : []),
       VitePWA({
         registerType: 'autoUpdate',
