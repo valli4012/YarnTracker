@@ -18,6 +18,7 @@ dev-dist
 *.tsbuildinfo
 
 # Local certificates
+certs
 *.pem
 
 # Editor directories and files

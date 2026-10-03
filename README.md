@@ -1,3 +1,24 @@
+# Пряжник
+
+## Запуск
+
+- `npm run dev` — обычный dev-сервер по http. Доступен и по IP машины в локальной сети.
+- `npm run dev:https` — то же самое, но по https. Нужен, чтобы открывать приложение
+  с телефона: по http на IP браузер не считает страницу secure context, поэтому
+  недоступны микрофон, service worker и установка PWA.
+
+По умолчанию `dev:https` использует самоподписанный сертификат от
+`@vitejs/plugin-basic-ssl`. Браузер покажет предупреждение, через него можно
+пройти — приложение и микрофон будут работать, но Chrome откажется
+регистрировать service worker на origin с ошибкой сертификата.
+
+Чтобы работал ещё и service worker, положите доверенный сертификат (например от
+[mkcert](https://github.com/FiloSottile/mkcert)) в `certs/cert.pem` и
+`certs/key.pem` — `dev:https` подхватит его вместо самоподписанного. Папка
+`certs/` в `.gitignore`.
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
