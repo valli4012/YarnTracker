@@ -8,7 +8,9 @@
     "dev:https": "vite --mode https",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "typecheck": "tsc -b",
+    "preview": "vite preview",
+    "preview:https": "vite preview --mode https"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
