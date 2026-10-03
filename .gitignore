@@ -21,6 +21,16 @@ dev-dist
 certs
 *.pem
 
+# Home server: secrets and the data directory mounted into the container
+.env
+.env.*
+!.env.example
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+server/dist
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

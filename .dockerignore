@@ -1,0 +1,11 @@
+.git
+node_modules
+dist
+server/dist
+data
+certs
+.env
+.env.*
+*.md
+npm-debug.log*
+.DS_Store
