@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Box, Button, LinearProgress, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { NAV_BAR_HEIGHT, NAV_FLOAT_INSET, tonalSx } from '../shared';
+import { NAV_BAR_HEIGHT, tonalSx } from '../shared';
 import { VoiceCounter } from './VoiceCounter';
 
 interface Props { title: string; subtitle?: string; count: number; target?: number; onChange: (delta: number) => void; children?: ReactNode }
@@ -19,7 +19,7 @@ export function RowCounter({ title, subtitle, count, target, onChange, children 
   const step = (d: number) => { navigator.vibrate?.(15); onChange(d); };
 
   return (
-    <Box sx={{ minHeight: `calc(100dvh - ${NAV_BAR_HEIGHT + NAV_FLOAT_INSET * 2 + 80}px)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: { xs: 2, sm: 3 }, py: 2, px: 2 }}>
+    <Box sx={{ minHeight: `calc(100dvh - ${NAV_BAR_HEIGHT + 80}px)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: { xs: 2, sm: 3 }, py: 2, px: 2 }}>
       <Box sx={{ textAlign: 'center' }}>
         <Typography variant="h5" component="h1">{title}</Typography>
         {subtitle && <Typography variant="body2" color="text.secondary">{subtitle}</Typography>}

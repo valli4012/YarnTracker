@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Snackbar } from '@mui/material';
-import { navClearance } from './shared';
+import { aboveNav } from './shared';
 
 interface ConfirmOpts { title: string; text?: string; ok?: string; danger?: boolean }
 interface ToastAction { label: string; onClick: () => void }
@@ -17,7 +17,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((message: string, action?: ToastAction) => setSnack({ message, action }), []);
   const close = (v: boolean) => { dlg?.resolve(v); setDlg(null); };
   const runAction = () => { snack?.action?.onClick(); setSnack(null); };
-  const above = navClearance; // над плавающим меню
+  const above = aboveNav; // над navigation bar
 
   return (
     <FeedbackCtx.Provider value={{ confirm, toast }}>

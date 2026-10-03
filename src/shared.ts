@@ -1,13 +1,11 @@
-// Плавающее нижнее меню: полоса M3 80dp и отступ островка от края экрана.
-// Такой же зазор оставлен над островком, чтобы контент и FAB не прилипали к нему.
-// env(safe-area-inset-bottom) поднимает островок над индикатором Home на iPhone.
-export const NAV_BAR_HEIGHT = 80;
-export const NAV_FLOAT_INSET = 16;
-export const navDockBottom = `calc(${NAV_FLOAT_INSET}px + env(safe-area-inset-bottom, 0px))`;
-export const navClearance = `calc(${NAV_BAR_HEIGHT + NAV_FLOAT_INSET * 2}px + env(safe-area-inset-bottom, 0px))`;
+// Flexible navigation bar M3: высота 64dp, контейнер на всю ширину (corner-none).
+// Safe area входит в полосу как window inset, а не как внешнее поле.
+export const NAV_BAR_HEIGHT = 64;
+export const navClearance = `calc(${NAV_BAR_HEIGHT}px + env(safe-area-inset-bottom, 0px))`;
+// FAB и снэкбар на 16px выше верхнего края полосы.
+export const aboveNav = `calc(${NAV_BAR_HEIGHT + 16}px + env(safe-area-inset-bottom, 0px))`;
 
-// FAB над плавающим меню, с учётом выреза/жеста iPhone
-export const fabSx = { position: 'fixed' as const, right: 16, bottom: navClearance, zIndex: 1100 };
+export const fabSx = { position: 'fixed' as const, right: 16, bottom: aboveNav, zIndex: 1100 };
 
 // Tonal button M3: вторичная кнопка на экране счётчика
 export const tonalSx = {
