@@ -7,6 +7,7 @@ import { useStoredState } from './storage';
 import { INITIAL_PROJECTS, INITIAL_YARNS, STORAGE_KEY_PROJECTS, STORAGE_KEY_YARNS, sanitizeProjects, sanitizeYarns, type Project, type Yarn } from './shared';
 import { InventoryPage } from './pages/InventoryPage';
 import { ProjectsPage } from './pages/ProjectsPage';
+import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { CounterPage, StandaloneCounterPage } from './pages/CounterPages';
 
 export default function App() {
@@ -20,8 +21,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<InventoryPage yarns={yarns} setYarns={setYarns} projects={projects} />} />
         <Route path="/projects" element={<ProjectsPage projects={projects} setProjects={setProjects} yarns={yarns} />} />
+        <Route path="/projects/:id" element={<ProjectDetailPage projects={projects} setProjects={setProjects} yarns={yarns} setYarns={setYarns} />} />
         <Route path="/counter" element={<StandaloneCounterPage />} />
         <Route path="/counter/:id" element={<CounterPage projects={projects} setProjects={setProjects} yarns={yarns} setYarns={setYarns} />} />
+        <Route path="/counter/:id/:stageId" element={<CounterPage projects={projects} setProjects={setProjects} yarns={yarns} setYarns={setYarns} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
