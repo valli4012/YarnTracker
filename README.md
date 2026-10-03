@@ -6,16 +6,49 @@
 - `npm run dev:https` — то же самое, но по https. Нужен, чтобы открывать приложение
   с телефона: по http на IP браузер не считает страницу secure context, поэтому
   недоступны микрофон, service worker и установка PWA.
+- `npm run build` + `npm run preview:https` — собранная версия по https. Только так
+  можно проверить настоящую установку PWA и офлайн-режим: в dev крутится отладочный
+  service worker, который ничего не кеширует.
+- `npm run lint`, `npm run typecheck` — проверки.
 
 По умолчанию `dev:https` использует самоподписанный сертификат от
 `@vitejs/plugin-basic-ssl`. Браузер покажет предупреждение, через него можно
 пройти — приложение и микрофон будут работать, но Chrome откажется
-регистрировать service worker на origin с ошибкой сертификата.
+регистрировать service worker на origin с ошибкой сертификата
+(`SecurityError: An SSL certificate error occurred when fetching the script`),
+а значит не будет ни офлайн-режима, ни полноценной установки на Android.
 
-Чтобы работал ещё и service worker, положите доверенный сертификат (например от
-[mkcert](https://github.com/FiloSottile/mkcert)) в `certs/cert.pem` и
-`certs/key.pem` — `dev:https` подхватит его вместо самоподписанного. Папка
-`certs/` в `.gitignore`.
+Чтобы работал ещё и service worker, положите доверенный сертификат от
+[mkcert](https://github.com/FiloSottile/mkcert) в `certs/cert.pem` и
+`certs/key.pem` — `dev:https` и `preview:https` подхватят его вместо
+самоподписанного. Папка `certs/` в `.gitignore`.
+
+```sh
+mkcert -install                                   # один раз: локальный доверенный CA
+mkcert -cert-file certs/cert.pem -key-file certs/key.pem localhost 192.168.1.5
+```
+
+IP во второй команде — адрес компьютера в домашней сети. Чтобы телефон тоже
+доверял сертификату, корневой сертификат mkcert (`mkcert -CAROOT`) нужно
+установить на телефон.
+
+## Иконки
+
+Все иконки домашнего экрана лежат в `public/` и должны остаться **непрозрачными
+PNG**: iOS заливает прозрачные области чёрным, а SVG в качестве иконки ярлыка не
+принимает вовсе.
+
+| файл | где используется |
+| --- | --- |
+| `icon-192.png`, `icon-512.png` | манифест, `purpose: any` |
+| `icon-maskable-192.png`, `icon-maskable-512.png` | манифест, `purpose: maskable` — рисунок внутри безопасной зоны 80% |
+| `apple-touch-icon.png` (180×180) | ярлык на iOS |
+| `favicon.ico`, `favicon-96.png` | вкладка браузера и ярлык-закладка на Android |
+
+Пути иконок в манифесте собираются из `base` в `vite.config.ts`. Проверять их
+нужно глазами по сети: на несуществующий `/icon-*.png` и dev-сервер, и `preview`
+отдают `index.html` со статусом 200, а не 404, поэтому опечатка в пути молча
+превращается в пустую иконку.
 
 ---
 
