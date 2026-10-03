@@ -9,6 +9,12 @@ import { useStoredState } from '../storage';
 import { STORAGE_KEY_VOICE_SPEAK, tonalSx } from '../shared';
 import { speakRows, speechSupported, useVoiceCommands, VOICE_COMMANDS_HINT, type VoiceCommand } from '../voice';
 
+// Включённый микрофон заливаем primary-container: заметно, но не спорит с главной кнопкой «Ряд»
+const listeningSx = {
+  bgcolor: 'var(--md-primary-container)', color: 'var(--md-on-primary-container)',
+  '&:hover': { bgcolor: 'var(--md-primary-container)', filter: 'brightness(.97)' },
+};
+
 // Пульсация иконки, пока идёт запись
 const micSx = {
   animation: 'voicePulse 1.4s ease-in-out infinite',
@@ -56,9 +62,8 @@ export function VoiceCounter({ count, onChange }: Props) {
           onClick={() => { navigator.vibrate?.(15); toggle(); }}
           disabled={!available}
           aria-pressed={listening}
-          variant={listening ? 'contained' : 'text'}
           startIcon={listening ? <MicIcon sx={micSx} /> : <MicNoneIcon />}
-          sx={{ flex: 1, height: 56, borderRadius: '20px', fontSize: 16, ...(listening ? null : tonalSx) }}
+          sx={{ flex: 1, height: 56, borderRadius: '20px', fontSize: 16, ...tonalSx, ...(listening ? listeningSx : null) }}
         >
           {listening ? 'Слушаю…' : 'Голосом'}
         </Button>
