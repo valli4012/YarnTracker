@@ -1,0 +1,25 @@
+# Пряжник на домашнем сервере. Своя папка, свой порт 8443, своя сеть.
+# Порты 80 и 443 не публикуем. К чужим сетям и контейнерам не подключаемся.
+name: yarntracker
+
+services:
+  app:
+    build: .
+    image: yarntracker:local
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      CERT_FILE: /certs/cert.pem
+      KEY_FILE: /certs/key.pem
+      STATIC_DIR: /app/dist
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "8443"
+    volumes:
+      - ./data:/data
+      - ./certs/cert.pem:/certs/cert.pem:ro
+      - ./certs/key.pem:/certs/key.pem:ro

@@ -77,7 +77,12 @@ export default defineConfig(({ command, mode }) => {
         includeAssets: ['favicon.ico', 'favicon-96.png', 'apple-touch-icon.png'],
         // по умолчанию workbox не кладёт шрифты в офлайн-кеш, и без сети текст
         // уезжает на системный шрифт
-        workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'] },
+        // API на том же origin, что и оболочка. Workbox не должен подменять
+        // /api страницей index.html и не кладёт эти ответы в кеш оболочки.
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          navigateFallbackDenylist: [/^\/api\//],
+        },
         manifest: {
           name: 'Учет Пряжи',
           short_name: 'Пряжа',
