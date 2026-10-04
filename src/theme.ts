@@ -62,16 +62,17 @@ export const buildTheme = (mode: 'light' | 'dark') => {
       MuiLinearProgress: { styleOverrides: {
         root: { borderRadius: 4, height: 6, backgroundColor: c.secondaryContainer },
       } },
-      // Navigation bar M3: 80dp, «пилюля» 64×32 под активной иконкой
-      MuiBottomNavigation: { styleOverrides: { root: { height: 80, backgroundColor: 'transparent' } } },
+      // Островок 88px. Индикатор 56×32, радиус 16 — половина его высоты.
+      MuiBottomNavigation: { styleOverrides: { root: { height: 88, backgroundColor: 'transparent' } } },
       MuiBottomNavigationAction: { styleOverrides: {
-        root: { minWidth: 64, maxWidth: 'none', paddingTop: 16, paddingBottom: 16, position: 'relative', color: c.onSurfaceVariant,
-          '&::before': { content: '""', position: 'absolute', top: 12, left: '50%', width: 64, height: 32, marginLeft: -32,
+        root: { minWidth: 64, maxWidth: 'none', paddingTop: 22, paddingBottom: 18, position: 'relative', color: c.onSurfaceVariant,
+          '&::before': { content: '""', position: 'absolute', top: 18, left: '50%', width: 56, height: 32, marginLeft: -28,
             borderRadius: 16, backgroundColor: c.secondaryContainer, transform: 'scaleX(0)', transition: 'transform .2s ease' },
           '& .MuiSvgIcon-root': { position: 'relative', zIndex: 1 },
-          '&.Mui-selected': { color: c.onSurface, '&::before': { transform: 'scaleX(1)' },
+          '&.Mui-selected': { color: c.secondary, '&::before': { transform: 'scaleX(1)' },
             '& .MuiSvgIcon-root': { color: c.onSecondaryContainer } } },
-        label: { fontSize: 12, fontWeight: 500, marginTop: 8, '&.Mui-selected': { fontSize: 12 } },
+        label: { fontSize: 12, lineHeight: '16px', fontWeight: 500, letterSpacing: 0.5, marginTop: 8,
+          '&.Mui-selected': { fontSize: 12, lineHeight: '16px' } },
       } },
     },
   });

@@ -1,5 +1,15 @@
-// FAB над нижней навигацией (80dp) с учётом выреза/жеста iPhone
-export const fabSx = { position: 'fixed' as const, right: 16, bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))', zIndex: 1100 };
+// Плавающий островок почти на всю ширину: поля 16px, радиус — половина высоты.
+// Safe area прибавляется к нижнему отступу, островок не прилипает к индикатору Home.
+export const NAV_BAR_HEIGHT = 88;
+export const NAV_FLOAT_INSET = 16;
+export const NAV_SIDE_INSET = 16;
+export const NAV_PILL_RADIUS = NAV_BAR_HEIGHT / 2;
+export const navDockBottom = `calc(${NAV_FLOAT_INSET}px + env(safe-area-inset-bottom, 0px))`;
+export const navClearance = `calc(${NAV_BAR_HEIGHT + NAV_FLOAT_INSET * 2}px + env(safe-area-inset-bottom, 0px))`;
+// FAB и снэкбар на 16px выше верхнего края островка.
+export const aboveNav = navClearance;
+
+export const fabSx = { position: 'fixed' as const, right: 16, bottom: aboveNav, zIndex: 1100 };
 
 // Tonal button M3: вторичная кнопка на экране счётчика
 export const tonalSx = {
