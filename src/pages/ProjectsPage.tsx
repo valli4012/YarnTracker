@@ -5,11 +5,12 @@ import AddIcon from '@mui/icons-material/Add';
 import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { fabSx, getAvailableStock, getProjectProgress, modalStyle, type Project, type ProjectMaterial, type Yarn } from '../shared';
+import { fabSx, getAvailableStock, getProjectProgress, modalStyle, type Project, type ProjectMaterial, type ProjectStage, type Yarn } from '../shared';
 import { useFeedback } from '../feedback';
 import { EmptyState } from '../components/EmptyState';
 import { NumberField } from '../components/NumberField';
 import { PageHeader } from '../components/PageHeader';
+import { StagesSection } from '../components/StagesSection';
 
 export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Project[]; setProjects: any; yarns: Yarn[] }) => {
   const [open, setOpen] = useState(false);
@@ -22,12 +23,13 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
   const [selectedYarnId, setSelectedYarnId] = useState<number | ''>('');
   const [materialQtyStr, setMaterialQtyStr] = useState('1');
   const [tempMaterials, setTempMaterials] = useState<ProjectMaterial[]>([]);
+  const [draftStages, setDraftStages] = useState<ProjectStage[]>([]);
 
   const materialQty = Math.floor(Number(materialQtyStr));
   const canAddMaterial = Boolean(selectedYarnId) && Number.isFinite(materialQty) && materialQty > 0;
 
   const handleOpen = () => {
-    setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQtyStr('1'); setTempMaterials([]); setTargetRowsStr('');
+    setTitle(''); setStatus('planned'); setSelectedYarnId(''); setMaterialQtyStr('1'); setTempMaterials([]); setTargetRowsStr(''); setDraftStages([]);
     setOpen(true);
   };
   const handleClose = () => setOpen(false);
@@ -71,7 +73,7 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
       createdAt: Date.now(),
       currentRows: 0,
       targetRows: Number(targetRowsStr) > 0 ? Math.floor(Number(targetRowsStr)) : undefined,
-      stages: [],
+      stages: draftStages,
       notes: [],
     };
     setProjects([newProject, ...projects]);
@@ -166,6 +168,8 @@ export const ProjectsPage = ({ projects, setProjects, yarns }: { projects: Proje
               ))}
             </Box>
           )}
+
+          <StagesSection compact stages={draftStages} onChange={setDraftStages} />
 
           <Button fullWidth variant="contained" size="large" sx={{ mt: 3, height: 52 }} onClick={createProject}>Создать изделие</Button>
         </Box>
