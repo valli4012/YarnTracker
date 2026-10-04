@@ -1,3 +1,8 @@
+import {
+  DEFAULT_PROJECT_ACCENT, DEFAULT_PROJECT_ICON, isProjectAccent, isProjectIcon,
+  type ProjectAccent, type ProjectIcon,
+} from './projectAppearance';
+
 // Плавающий островок почти на всю ширину: поля 16px, радиус — половина высоты.
 // Safe area прибавляется к нижнему отступу, островок не прилипает к индикатору Home.
 export const NAV_BAR_HEIGHT = 88;
@@ -72,6 +77,8 @@ export interface Project {
   targetRows?: number;
   stages: ProjectStage[];
   notes: ProjectNote[];
+  icon: ProjectIcon;
+  accent: ProjectAccent;
 }
 
 // --- КОНСТАНТЫ ХРАНЕНИЯ ---
@@ -214,6 +221,9 @@ export const sanitizeProjects = (raw: unknown): Project[] => {
     targetRows: p.targetRows == null ? undefined : num(p.targetRows),
     stages: sanitizeStages(p.stages),
     notes: sanitizeNotes(p.notes),
+    // Поля появились позже изделий. Чужое или пустое значение не роняет запись — остаётся нейтральный вид.
+    icon: isProjectIcon(p.icon) ? p.icon : DEFAULT_PROJECT_ICON,
+    accent: isProjectAccent(p.accent) ? p.accent : DEFAULT_PROJECT_ACCENT,
   }));
 };
 

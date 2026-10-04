@@ -11,6 +11,8 @@ import {
 import { useFeedback } from '../feedback';
 import { DetailRow, Section } from '../components/detail';
 import { NotesSection } from '../components/NotesSection';
+import { ProjectLookPicker } from '../components/ProjectLookPicker';
+import { ProjectMark } from '../components/ProjectMark';
 import { ProjectProgressBar } from '../components/ProjectProgressBar';
 import { StagePicker } from '../components/StagePicker';
 import { StagesSection } from '../components/StagesSection';
@@ -78,17 +80,27 @@ export const ProjectDetailPage = ({ projects, setProjects, yarns, setYarns }: Pr
       </Box>
 
       <Box sx={{ maxWidth: 640, width: '100%', mx: 'auto', px: 2, pb: 14 }}>
-        <Box sx={{ px: 0.5 }}>
-          <Typography variant="h5" component="h1" sx={{ wordBreak: 'break-word' }}>{project.title}</Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-            <Chip size="small" label={STATUS_LABEL[project.status]} sx={STATUS_STYLE[project.status]} />
-            <Typography variant="body2" color="text.secondary">создано {dateText(project.createdAt)}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, px: 0.5 }}>
+          <ProjectMark icon={project.icon} accent={project.accent} size={64} />
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="h5" component="h1" sx={{ wordBreak: 'break-word' }}>{project.title}</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+              <Chip size="small" label={STATUS_LABEL[project.status]} sx={STATUS_STYLE[project.status]} />
+              <Typography variant="body2" color="text.secondary">создано {dateText(project.createdAt)}</Typography>
+            </Box>
           </Box>
         </Box>
 
         <Box sx={{ mt: 2.5, p: 2, borderRadius: '20px', bgcolor: 'var(--md-surface-container)' }}>
           <ProjectProgressBar project={project} help />
         </Box>
+
+        <Section title="Внешний вид">
+          <Box sx={{ borderRadius: '20px', bgcolor: 'var(--md-surface-container)', p: 2 }}>
+            <ProjectLookPicker icon={project.icon} accent={project.accent}
+              onIcon={(icon) => update({ icon })} onAccent={(accent) => update({ accent })} />
+          </Box>
+        </Section>
 
         <StagesSection stages={project.stages} canKnit={project.status !== 'finished'}
           onChange={(stages: ProjectStage[]) => update({ stages })}
