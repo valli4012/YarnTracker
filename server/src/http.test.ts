@@ -108,6 +108,35 @@ test('вход, сессия, health и выход', async () => {
     assert.equal(me.statusCode, 200)
     assert.deepEqual(me.json(), { username: 'knitter' })
 
+    const stateAnon = await app.inject({ method: 'GET', url: '/api/state' })
+    assert.equal(stateAnon.statusCode, 401)
+
+    const initialState = await app.inject({ method: 'GET', url: '/api/state', headers: { cookie: pair } })
+    assert.equal(initialState.statusCode, 200)
+    assert.deepEqual(initialState.json(), { yarns: [], projects: [] })
+
+    const saveState = await app.inject({
+      method: 'PUT',
+      url: '/api/state',
+      headers: { cookie: pair, 'content-type': 'application/json' },
+      payload: { yarns: [{ id: 1, brand: 'Test' }], projects: [{ id: 2, title: 'Sample' }] },
+    })
+    assert.equal(saveState.statusCode, 204)
+
+    const loadedState = await app.inject({ method: 'GET', url: '/api/state', headers: { cookie: pair } })
+    assert.deepEqual(loadedState.json(), {
+      yarns: [{ id: 1, brand: 'Test' }],
+      projects: [{ id: 2, title: 'Sample' }],
+    })
+
+    const invalidState = await app.inject({
+      method: 'PUT',
+      url: '/api/state',
+      headers: { cookie: pair, 'content-type': 'application/json' },
+      payload: { yarns: 'not-an-array', projects: [] },
+    })
+    assert.equal(invalidState.statusCode, 400)
+
     const stored = db.prepare('select expires_at as expiresAt from sessions').get() as
       | { expiresAt: number }
       | undefined
@@ -126,7 +155,7 @@ test('вход, сессия, health и выход', async () => {
     assert.equal(missingAsset.statusCode, 404)
     assert.equal(missingAsset.body, 'Not found')
 
-    const missingApi = await app.inject({ method: 'GET', url: '/api/state' })
+    const missingApi = await app.inject({ method: 'GET', url: '/api/does-not-exist' })
     assert.equal(missingApi.statusCode, 404)
     assert.deepEqual(missingApi.json(), { error: 'not_found' })
 
