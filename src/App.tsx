@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Alert, Box, BottomNavigation, BottomNavigationAction, Button, Paper, TextField, Typography } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory2';
@@ -83,7 +83,7 @@ function ServerApp() {
     return () => { active = false; };
   }, []);
 
-  const signIn = async (event: React.FormEvent) => {
+  const signIn = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
     setLoading(true);
