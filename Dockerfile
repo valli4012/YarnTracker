@@ -1,14 +1,11 @@
 # Один контейнер: собранный фронт и Fastify на одном origin.
-# Образ собирается на серверной машине (`docker compose up -d --build`).
-# better-sqlite3 и argon2 — нативные модули. Их ставит только server/package.json,
-# на процессор этой машины. Корневой npm ci их не содержит.
 FROM node:22-bookworm-slim AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Фронт без VITE_DATA=server: экраны остаются на localStorage.
-RUN npm run build
+# В контейнере фронтенд использует API и SQLite-состояние сервера.
+RUN VITE_DATA=server npm run build
 
 FROM node:22-bookworm-slim AS server
 WORKDIR /app

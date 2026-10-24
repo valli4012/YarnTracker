@@ -22,6 +22,14 @@ export type BuildAppOptions = {
 }
 
 type LoginBody = { username: string; password: string }
+type AppState = { yarns: unknown[]; projects: unknown[] }
+
+function stateBody(body: unknown): AppState | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return null
+  const record = body as Record<string, unknown>
+  if (!Array.isArray(record.yarns) || !Array.isArray(record.projects)) return null
+  return { yarns: record.yarns, projects: record.projects }
+}
 
 function loginBody(body: unknown): LoginBody | null {
   if (!body || typeof body !== 'object') return null
@@ -49,6 +57,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
   const { db } = options
   const app = Fastify({
     logger: options.logger ?? false,
+    bodyLimit: 20 * 1024 * 1024,
     ...(options.https ? { https: options.https } : {}),
   })
 
@@ -94,6 +103,33 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     const session = requireSession(db, request, reply)
     if (!session) return
     return { username: session.username }
+  })
+
+  app.get('/api/state', async (request, reply) => {
+    const session = requireSession(db, request, reply)
+    if (!session) return
+    const row = db.prepare('select payload from app_state where user_id = ?')
+      .get(session.userId) as { payload: string } | undefined
+    if (!row) return { yarns: [], projects: [] }
+    try {
+      return JSON.parse(row.payload) as AppState
+    } catch {
+      request.log.error('Invalid JSON in app_state; returning empty state')
+      return { yarns: [], projects: [] }
+    }
+  })
+
+  app.put('/api/state', async (request, reply) => {
+    const session = requireSession(db, request, reply)
+    if (!session) return
+    const state = stateBody(request.body)
+    if (!state) return reply.code(400).send({ error: 'bad_request' })
+    const payload = JSON.stringify(state)
+    db.prepare(
+      `insert into app_state (user_id, payload, updated_at) values (?, ?, ?)
+       on conflict(user_id) do update set payload = excluded.payload, updated_at = excluded.updated_at`,
+    ).run(session.userId, payload, Date.now())
+    return reply.code(204).send()
   })
 
   const staticRoot = options.staticRoot

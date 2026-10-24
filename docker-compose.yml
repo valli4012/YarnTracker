@@ -10,7 +10,7 @@ services:
     image: yarntracker:local
     restart: unless-stopped
     ports:
-      - "8443:8443"
+      - "${LAN_BIND_IP:?Set LAN_BIND_IP in .env to the laptop LAN IPv4}:8443:8443"
     env_file:
       - .env
     environment:
