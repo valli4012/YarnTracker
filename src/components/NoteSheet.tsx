@@ -89,14 +89,12 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
 
   const removeExisting = (id: number) => setImageIds(current => current.filter(item => item !== id));
   const removePending = (index: number) => {
-    setFiles(current => {
-      const item = current[index];
-      if (item) {
-        URL.revokeObjectURL(item.preview);
-        previewUrls.current.delete(item.preview);
-      }
-      return current.filter((_, i) => i !== index);
-    });
+    const item = files[index];
+    if (item) {
+      URL.revokeObjectURL(item.preview);
+      previewUrls.current.delete(item.preview);
+    }
+    setFiles(files.filter((_, i) => i !== index));
   };
 
   return (
