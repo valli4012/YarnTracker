@@ -210,7 +210,7 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     ).run(session.userId, payload, Date.now())
 
     const referenced = new Set(imageIds)
-    const unused = (db.prepare("select id from files where user_id = ? and kind = 'note'").all(session.userId) as { id: number }[])
+    const unused = (db.prepare("select id from files where user_id = ? and kind = 'note' and created_at < ?").all(session.userId, Date.now() - 5 * 60 * 1000) as { id: number }[])
       .filter((file) => !referenced.has(file.id))
     for (const file of unused) {
       try { unlinkSync(join(filesDir, String(file.id))) } catch { /* файл мог быть удалён вручную */ }
