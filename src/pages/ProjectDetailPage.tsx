@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Box, Button, Chip, Container, Fab, IconButton, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import TimerIcon from '@mui/icons-material/Timer';
 import {
   fabSx, finishProjectState, getProjectRows, rowsWord, STATUS_LABEL, STATUS_STYLE,
@@ -11,6 +12,7 @@ import {
 import { useFeedback } from '../feedback';
 import { DetailRow, Section } from '../components/detail';
 import { NotesSection } from '../components/NotesSection';
+import { EditProjectDialog } from './EditProjectDialog';
 import { ProjectLookPicker } from '../components/ProjectLookPicker';
 import { ProjectMark } from '../components/ProjectMark';
 import { ProjectProgressBar } from '../components/ProjectProgressBar';
@@ -28,6 +30,7 @@ export const ProjectDetailPage = ({ projects, setProjects, yarns, setYarns }: Pr
   const navigate = useNavigate();
   const { confirm, toast } = useFeedback();
   const [pickStage, setPickStage] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const project = projects.find(p => p.id === projectId);
 
   if (!project) {
@@ -76,9 +79,13 @@ export const ProjectDetailPage = ({ projects, setProjects, yarns, setYarns }: Pr
         pt: 'env(safe-area-inset-top, 0px)', bgcolor: 'background.default' }}>
         <IconButton component={Link} to="/projects" aria-label="Назад"><ArrowBackIcon /></IconButton>
         <Typography variant="h6" noWrap sx={{ flex: 1 }}>{project.title}</Typography>
-        <IconButton onClick={remove} aria-label="Удалить изделие" color="error"><DeleteOutlinedIcon /></IconButton>
-      </Box>
-
+<IconButton onClick={() => setEditOpen(true)} aria-label="Редактировать изделие">
+  <EditOutlinedIcon />
+</IconButton>
+<IconButton onClick={remove} aria-label="Удалить изделие" color="error">
+  <DeleteOutlinedIcon />
+</IconButton>
+</Box>
       <Box sx={{ maxWidth: 640, width: '100%', mx: 'auto', px: 2, pb: 14 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, px: 0.5 }}>
           <ProjectMark icon={project.icon} accent={project.accent} size={64} />
@@ -153,6 +160,14 @@ export const ProjectDetailPage = ({ projects, setProjects, yarns, setYarns }: Pr
 
       <StagePicker open={pickStage} stages={project.stages} onClose={() => setPickStage(false)}
         onPick={(stageId) => { setPickStage(false); knit(stageId); }} />
+        <EditProjectDialog
+       open={editOpen}
+       project={project}
+       projects={projects}
+       yarns={yarns}
+       onClose={() => setEditOpen(false)}
+       onSave={(patch) => update(patch)}
+      />
     </>
   );
 };

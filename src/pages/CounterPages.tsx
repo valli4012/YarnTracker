@@ -66,10 +66,25 @@ export const CounterPage = ({ projects, setProjects, yarns, setYarns }: Props) =
         Заметка
       </Button>
 
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 1 }}>
-        <Button component={Link} to={`/projects/${projectId}`}>К изделию</Button>
-        <Button color="error" onClick={finish}>Завершить</Button>
-      </Box>
+      
+<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5, width: '100%', mt: 1 }}>
+  <Button
+    component={Link}
+    to={`/projects/${projectId}`}
+    variant="contained"
+    fullWidth
+    sx={{ maxWidth: 360, height: 56, borderRadius: '20px', fontSize: 16 }}
+  >
+    Пауза
+  </Button>
+  <Button
+    onClick={finish}
+    color="inherit"
+    sx={{ opacity: 0.7, fontSize: 14 }}
+  >
+    Завершить изделие
+  </Button>
+</Box>
 
       {openNote && <NoteSheet onClose={() => setOpenNote(false)} onSave={addNote} />}
     </RowCounter>
