@@ -192,12 +192,14 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     if (!session) return
     const state = stateBody(request.body)
     if (!state) return reply.code(400).send({ error: 'bad_request' })
-    const imageIds = [...new Set(state.projects.flatMap((project) => {
+    const imageIds = [...new Set<number>(state.projects.flatMap((project): number[] => {
       if (!project || typeof project !== 'object' || !Array.isArray((project as { notes?: unknown }).notes)) return []
-      return ((project as { notes: unknown[] }).notes).flatMap((note) => {
+      return ((project as { notes: unknown[] }).notes).flatMap((note): number[] => {
         if (!note || typeof note !== 'object') return []
         const ids = (note as { imageIds?: unknown }).imageIds
-        return Array.isArray(ids) ? ids.filter((id): id is number => Number.isSafeInteger(id) && id > 0) : []
+        return Array.isArray(ids)
+          ? ids.filter((id): id is number => typeof id === 'number' && Number.isSafeInteger(id) && id > 0)
+          : []
       })
     }))]
     const ownedIds = new Set((db.prepare("select id from files where user_id = ? and kind = 'note'").all(session.userId) as { id: number }[]).map((row) => row.id))
