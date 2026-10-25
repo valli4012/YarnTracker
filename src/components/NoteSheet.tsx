@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Box, Button, IconButton, Modal, TextField, Typography } from '@mui/material';
 import AddPhotoAlternateOutlinedIcon from '@mui/icons-material/AddPhotoAlternateOutlined';
 import CloseIcon from '@mui/icons-material/Close';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import { modalStyle, type ProjectNote } from '../shared';
 
 interface Props {
@@ -134,7 +134,7 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
                 <IconButton aria-label="Убрать фото" size="small" disabled={saving}
                   onClick={() => removeExisting(id)}
                   sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,.65)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,.8)' } }}>
-                  <DeleteOutlineIcon fontSize="small" />
+                  <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </Box>
             ))}
@@ -144,7 +144,7 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
                 <IconButton aria-label="Убрать новое фото" size="small" disabled={saving}
                   onClick={() => removePending(index)}
                   sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,.65)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,.8)' } }}>
-                  <DeleteOutlineIcon fontSize="small" />
+                  <DeleteOutlinedIcon fontSize="small" />
                 </IconButton>
               </Box>
             ))}
