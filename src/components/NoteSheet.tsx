@@ -20,18 +20,17 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
   const [title, setTitle] = useState(note?.title ?? '');
   const [text, setText] = useState(note?.text ?? '');
   const [imageIds, setImageIds] = useState<number[]>(note?.imageIds ?? []);
-  const [files, setFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [files, setFiles] = useState<{ file: File; preview: string }[]>([]);
+  const previewUrls = useRef(new Set<string>());
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const serverMode = import.meta.env.VITE_DATA === 'server';
 
-  useEffect(() => {
-    const urls = files.map(file => URL.createObjectURL(file));
-    setPreviews(urls);
-    return () => urls.forEach(url => URL.revokeObjectURL(url));
-  }, [files]);
+  useEffect(() => () => {
+    previewUrls.current.forEach(url => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+  }, []);
 
   const chooseFiles = (selected: FileList | null) => {
     if (!selected?.length) return;
@@ -48,7 +47,12 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
       return;
     }
     setError('');
-    setFiles(current => [...current, ...picked]);
+    const pending = picked.map(file => {
+      const preview = URL.createObjectURL(file);
+      previewUrls.current.add(preview);
+      return { file, preview };
+    });
+    setFiles(current => [...current, ...pending]);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -57,7 +61,8 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
     setError('');
     try {
       const uploadedIds: number[] = [];
-      for (const file of files) {
+      for (const pending of files) {
+        const file = pending.file;
         const response = await fetch('/api/files', {
           method: 'POST',
           credentials: 'same-origin',
@@ -83,7 +88,16 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
   };
 
   const removeExisting = (id: number) => setImageIds(current => current.filter(item => item !== id));
-  const removePending = (index: number) => setFiles(current => current.filter((_, i) => i !== index));
+  const removePending = (index: number) => {
+    setFiles(current => {
+      const item = current[index];
+      if (item) {
+        URL.revokeObjectURL(item.preview);
+        previewUrls.current.delete(item.preview);
+      }
+      return current.filter((_, i) => i !== index);
+    });
+  };
 
   return (
     <Modal open onClose={onClose}>
@@ -113,7 +127,7 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
           {!serverMode ? 'Фото доступны в серверной версии' : 'Добавить фото'}
         </Button>
 
-        {(imageIds.length > 0 || previews.length > 0) && (
+        {(imageIds.length > 0 || files.length > 0) && (
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, mt: 1.5 }}>
             {imageIds.map(id => (
               <Box key={id} sx={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', borderRadius: '12px', bgcolor: 'var(--md-surface-container)' }}>
@@ -126,9 +140,9 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
                 </IconButton>
               </Box>
             ))}
-            {previews.map((src, index) => (
-              <Box key={src} sx={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', borderRadius: '12px', bgcolor: 'var(--md-surface-container)' }}>
-                <Box component="img" src={src} alt="Новое фото" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            {files.map((item, index) => (
+              <Box key={item.preview} sx={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', borderRadius: '12px', bgcolor: 'var(--md-surface-container)' }}>
+                <Box component="img" src={item.preview} alt="Новое фото" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 <IconButton aria-label="Убрать новое фото" size="small" disabled={saving}
                   onClick={() => removePending(index)}
                   sx={{ position: 'absolute', top: 4, right: 4, bgcolor: 'rgba(0,0,0,.65)', color: '#fff', '&:hover': { bgcolor: 'rgba(0,0,0,.8)' } }}>
