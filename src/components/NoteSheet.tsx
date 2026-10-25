@@ -98,7 +98,7 @@ export function NoteSheet({ note, onClose, onSave, onDelete }: Props) {
   };
 
   return (
-    <Modal open onClose={onClose}>
+    <Modal open onClose={() => { if (!saving) onClose(); }}>
       <Box sx={modalStyle}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
           <Typography variant="h6">{note ? 'Заметка' : 'Новая заметка'}</Typography>
