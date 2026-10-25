@@ -182,6 +182,83 @@ test('вход, сессия, health и выход', async () => {
   }
 })
 
+
+test('фото заметки загружается, требует сессию и сохраняется на диске', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'yarntracker-files-'))
+  const db = openDatabase(join(dir, 'app.sqlite'))
+  await ensureUser(db, 'knitter', PASSWORD)
+  const app = await buildApp({ db, dataDir: dir })
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 1, 2, 3])
+  try {
+    const anonymous = await app.inject({
+      method: 'POST',
+      url: '/api/files',
+      headers: { 'content-type': 'image/png' },
+      payload: png,
+    })
+    assert.equal(anonymous.statusCode, 401)
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/login',
+      headers: { 'content-type': 'application/json' },
+      payload: { username: 'knitter', password: PASSWORD },
+    })
+    const pair = cookiePair(login.headers['set-cookie'])
+
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/files',
+      headers: { cookie: pair, 'content-type': 'image/png' },
+      payload: Buffer.from('not a png'),
+    })
+    assert.equal(invalid.statusCode, 400)
+
+    const upload = await app.inject({
+      method: 'POST',
+      url: '/api/files',
+      headers: { cookie: pair, 'content-type': 'image/png' },
+      payload: png,
+    })
+    assert.equal(upload.statusCode, 201)
+    const file = upload.json() as { id: number; mime: string; byteSize: number }
+    assert.equal(file.mime, 'image/png')
+    assert.equal(file.byteSize, png.length)
+
+    const save = await app.inject({
+      method: 'PUT',
+      url: '/api/state',
+      headers: { cookie: pair, 'content-type': 'application/json' },
+      payload: { yarns: [], projects: [{ id: 1, notes: [{ id: 2, text: 'test', imageIds: [file.id] }] }] },
+    })
+    assert.equal(save.statusCode, 204)
+
+    const download = await app.inject({
+      method: 'GET',
+      url: `/api/files/${file.id}`,
+      headers: { cookie: pair },
+    })
+    assert.equal(download.statusCode, 200)
+    assert.equal(download.headers['content-type'], 'image/png')
+    assert.deepEqual(download.rawPayload, png)
+
+    const missingSession = await app.inject({ method: 'GET', url: `/api/files/${file.id}` })
+    assert.equal(missingSession.statusCode, 401)
+
+    const invalidReference = await app.inject({
+      method: 'PUT',
+      url: '/api/state',
+      headers: { cookie: pair, 'content-type': 'application/json' },
+      payload: { yarns: [], projects: [{ id: 1, notes: [{ id: 2, text: 'test', imageIds: [999999] }] }] },
+    })
+    assert.equal(invalidReference.statusCode, 400)
+  } finally {
+    await app.close()
+    db.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('команда смены пароля пишет новый хеш и гасит сессию', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'yarntracker-reset-'))
   const db = openDatabase(join(dir, 'app.sqlite'))
