@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ServerOptions as HttpsOptions } from 'node:https'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
@@ -18,6 +18,7 @@ export type BuildAppOptions = {
   db: Sqlite
   staticRoot?: string
   logger?: boolean
+  dataDir?: string
   https?: HttpsOptions
 }
 
@@ -63,6 +64,15 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
 
   await app.register(cookie)
 
+  app.addContentTypeParser(
+    ['image/jpeg', 'image/png', 'image/webp'],
+    { parseAs: 'buffer', bodyLimit: 10 * 1024 * 1024 },
+    (_request, body, done) => done(null, body),
+  )
+
+  const filesDir = join(options.dataDir ?? join(process.cwd(), 'data'), 'files')
+  mkdirSync(filesDir, { recursive: true })
+
   app.addHook('onRequest', async (request, reply) => {
     const path = request.url.split('?')[0] ?? '/'
     if (path === '/api' || path.startsWith('/api/')) {
@@ -105,6 +115,64 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     return { username: session.username }
   })
 
+
+  // Фотографии доступны только пользователю с действующей сессией.
+  app.post('/api/files', async (request, reply) => {
+    const session = requireSession(db, request, reply)
+    if (!session) return
+
+    const mime = request.headers['content-type']?.split(';')[0]?.trim()
+    if (!mime || !['image/jpeg', 'image/png', 'image/webp'].includes(mime)) {
+      return reply.code(415).send({ error: 'unsupported_image_type' })
+    }
+
+    const image = request.body
+    if (!Buffer.isBuffer(image) || image.length === 0 || image.length > 10 * 1024 * 1024) {
+      return reply.code(400).send({ error: 'bad_image_size' })
+    }
+
+    const validImage =
+      (mime === 'image/jpeg' && image.length >= 3 && image[0] === 0xff && image[1] === 0xd8 && image[2] === 0xff) ||
+      (mime === 'image/png' && image.length >= 8 && image.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
+      (mime === 'image/webp' && image.length >= 12 && image.toString('ascii', 0, 4) === 'RIFF' && image.toString('ascii', 8, 12) === 'WEBP')
+    if (!validImage) return reply.code(400).send({ error: 'invalid_image' })
+
+    const result = db.prepare(
+      `insert into files (user_id, kind, mime, byte_size, created_at)
+       values (?, 'note', ?, ?, ?)`,
+    ).run(session.userId, mime, image.length, Date.now())
+    const id = Number(result.lastInsertRowid)
+
+    try {
+      writeFileSync(join(filesDir, String(id)), image, { flag: 'wx' })
+    } catch (error) {
+      db.prepare('delete from files where id = ? and user_id = ?').run(id, session.userId)
+      throw error
+    }
+
+    return reply.code(201).send({ id, mime, byteSize: image.length })
+  })
+
+  app.get<{ Params: { id: string } }>('/api/files/:id', async (request, reply) => {
+    const session = requireSession(db, request, reply)
+    if (!session) return
+
+    const id = Number(request.params.id)
+    if (!Number.isSafeInteger(id) || id < 1) return reply.code(400).send({ error: 'bad_file_id' })
+
+    const file = db.prepare(
+      "select mime from files where id = ? and user_id = ? and kind = 'note'",
+    ).get(id, session.userId) as { mime: string } | undefined
+    if (!file) return reply.code(404).send({ error: 'not_found' })
+
+    try {
+      const image = readFileSync(join(filesDir, String(id)))
+      return reply.type(file.mime).header('X-Content-Type-Options', 'nosniff').send(image)
+    } catch {
+      return reply.code(404).send({ error: 'file_missing' })
+    }
+  })
+
   app.get('/api/state', async (request, reply) => {
     const session = requireSession(db, request, reply)
     if (!session) return
@@ -124,11 +192,33 @@ export async function buildApp(options: BuildAppOptions): Promise<FastifyInstanc
     if (!session) return
     const state = stateBody(request.body)
     if (!state) return reply.code(400).send({ error: 'bad_request' })
+    const imageIds = [...new Set<number>(state.projects.flatMap((project): number[] => {
+      if (!project || typeof project !== 'object' || !Array.isArray((project as { notes?: unknown }).notes)) return []
+      return ((project as { notes: unknown[] }).notes).flatMap((note): number[] => {
+        if (!note || typeof note !== 'object') return []
+        const ids = (note as { imageIds?: unknown }).imageIds
+        return Array.isArray(ids)
+          ? ids.filter((id): id is number => typeof id === 'number' && Number.isSafeInteger(id) && id > 0)
+          : []
+      })
+    }))]
+    const ownedIds = new Set((db.prepare("select id from files where user_id = ? and kind = 'note'").all(session.userId) as { id: number }[]).map((row) => row.id))
+    if (imageIds.some((id) => !ownedIds.has(id))) return reply.code(400).send({ error: 'bad_image_reference' })
+
     const payload = JSON.stringify(state)
     db.prepare(
       `insert into app_state (user_id, payload, updated_at) values (?, ?, ?)
        on conflict(user_id) do update set payload = excluded.payload, updated_at = excluded.updated_at`,
     ).run(session.userId, payload, Date.now())
+
+    const referenced = new Set(imageIds)
+    const unused = (db.prepare("select id from files where user_id = ? and kind = 'note' and created_at < ?").all(session.userId, Date.now() - 5 * 60 * 1000) as { id: number }[])
+      .filter((file) => !referenced.has(file.id))
+    for (const file of unused) {
+      try { unlinkSync(join(filesDir, String(file.id))) } catch { /* файл мог быть удалён вручную */ }
+      db.prepare('delete from files where id = ? and user_id = ?').run(file.id, session.userId)
+    }
+
     return reply.code(204).send()
   })
 

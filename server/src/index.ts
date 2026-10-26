@@ -27,6 +27,7 @@ async function main(): Promise<void> {
 
   const app = await buildApp({
     db,
+    dataDir: config.dataDir,
     staticRoot: config.staticDir,
     logger: true,
     https: {

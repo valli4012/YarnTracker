@@ -65,6 +65,7 @@ export interface ProjectNote {
   createdAt: number;
   title?: string;
   text: string;
+  imageIds?: number[];
 }
 
 export interface Project {
@@ -202,6 +203,7 @@ const sanitizeNotes = (raw: unknown): ProjectNote[] => {
       createdAt: num(n.createdAt, Date.now()),
       title: str(n.title).trim() === '' ? undefined : str(n.title).trim(),
       text: str(n.text),
+      imageIds: Array.isArray(n.imageIds) ? n.imageIds.filter((id: unknown): id is number => Number.isSafeInteger(id) && (id as number) > 0) : [],
     }))
     .filter(n => n.text.trim() !== ''); // пустых заметок не бывает
 };

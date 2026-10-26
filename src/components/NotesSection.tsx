@@ -36,10 +36,10 @@ export function NotesSection({ notes, onChange }: Props) {
   const [expanded, setExpanded] = useState<number[]>([]);
   const editing = typeof sheetId === 'number' ? notes.find(n => n.id === sheetId) : undefined;
 
-  const save = ({ title, text }: { title?: string; text: string }) => {
+  const save = ({ title, text, imageIds }: { title?: string; text: string; imageIds: number[] }) => {
     onChange(editing
-      ? notes.map(n => (n.id === editing.id ? { ...n, title, text } : n))
-      : [{ id: Date.now(), createdAt: Date.now(), title, text }, ...notes]);
+      ? notes.map(n => (n.id === editing.id ? { ...n, title, text, imageIds } : n))
+      : [{ id: Date.now(), createdAt: Date.now(), title, text, imageIds }, ...notes]);
     setSheetId(null);
   };
 
@@ -75,6 +75,15 @@ export function NotesSection({ notes, onChange }: Props) {
                 </Box>
 
                 <NoteBody text={note.text} clamped={clamped} />
+
+                {!!note.imageIds?.length && (
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 1, mt: 1.5 }}>
+                    {note.imageIds.map(id => (
+                      <Box key={id} component="img" src={`/api/files/${id}`} alt="Фото заметки" loading="lazy"
+                        sx={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: '12px', bgcolor: 'var(--md-surface-container-high)' }} />
+                    ))}
+                  </Box>
+                )}
 
                 {note.text.length > LONG_NOTE && (
                   <Button size="small" sx={{ mt: 0.5, ml: -1.5 }}
